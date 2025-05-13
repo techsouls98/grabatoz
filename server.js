@@ -4935,7 +4935,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
   
       for (const row of data) {
         const name = String(row.Name || '').trim();
-        const sku = String(row.Slug || '').trim();
+        const sku = String(row.SKU || '').trim();
   
         if (!name || !sku) {
           skippedCount++;
@@ -4943,10 +4943,10 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
           continue;
         }
   
-        const [existingProduct] = await db.query('SELECT id FROM products WHERE slug = ? OR name = ?', [sku, name]);
+        const [existingProduct] = await db.query('SELECT id FROM products WHERE sku = ? OR name = ?', [sku, name]);
         if (existingProduct.length > 0) {
           skippedCount++;
-          errorLogs.push({ name, reason: 'Duplicate Slug or Name' });
+          errorLogs.push({ name, reason: 'Duplicate SKU or Name' });
           continue;
         }
   
