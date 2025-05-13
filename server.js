@@ -24,7 +24,8 @@ const PORT = process.env.PORT || 3000;
 //     credentials: true
 // }));
 app.use(cors({
-    origin: '*', // Or specify allowed origin(s)
+    // origin: '*', // Or specify allowed origin(s)
+    origin: 'https://admin-graba2z.netlify.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
