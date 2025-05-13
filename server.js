@@ -4906,7 +4906,9 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
         const data = xlsx.utils.sheet_to_json(sheet);
         const totalRows = data.length;
 
-        const uploadsDir = path.join(__dirname, '../Uploads');
+        // const uploadsDir = path.join(__dirname, '../Uploads');
+        const uploadsDir = path.join(__dirname, 'Uploads');  // ✅ This is correct
+
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
         const productsToInsert = [];
