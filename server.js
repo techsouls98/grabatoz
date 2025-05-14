@@ -2594,6 +2594,104 @@ app.put('/api/orders/:id/status', authenticate, async (req, res) => {
 //         });
 //     }
 // });
+// app.post('/api/products', authenticate, upload.array('images', 4), async (req, res) => {
+//     try {
+//         const {
+//             name,
+//             slug,
+//             sku,
+//             category,
+//             barcode,
+//             buying_price,
+//             selling_price,
+//             tax,
+//             brand,
+//             status,
+//             can_purchasable,
+//             show_stock_out,
+//             refundable,
+//             max_purchase_quantity,
+//             low_stock_warning,
+//             unit,
+//             weight,
+//             tags,
+//             short_description,  // Newly added field
+//             description,
+//             offer_price,
+//             discount,
+//             specifications,
+//             details
+//         } = req.body;
+
+//         if (!name || !sku || !buying_price || !selling_price || !category) {
+//             return res.status(400).json({ error: 'Name, SKU, Buying Price, Selling Price, and Category are required.' });
+//         }
+
+//         const parsedBuyingPrice = parseFloat(buying_price);
+//         const parsedSellingPrice = parseFloat(selling_price);
+//         const parsedOfferPrice = offer_price ? parseFloat(offer_price) : null;
+//         const parsedMaxPurchaseQty = max_purchase_quantity ? parseInt(max_purchase_quantity, 10) : null;
+//         const parsedLowStockWarning = low_stock_warning ? parseInt(low_stock_warning, 10) : null;
+
+//         if (isNaN(parsedBuyingPrice) || isNaN(parsedSellingPrice)) {
+//             return res.status(400).json({ error: 'Buying Price and Selling Price must be valid numbers.' });
+//         }
+
+//         const categoryId = parseInt(category, 10);
+//         const [categoryCheck] = await db.query('SELECT id FROM product_categories WHERE id = ?', [categoryId]);
+//         if (categoryCheck.length === 0) {
+//             return res.status(400).json({ error: `Category with ID ${categoryId} does not exist.` });
+//         }
+
+//         let brandId;
+//         if (isNaN(parseInt(brand))) {
+//             const [brandCheck] = await db.query('SELECT id FROM product_brands WHERE name = ?', [brand]);
+//             if (brandCheck.length === 0) {
+//                 return res.status(400).json({ error: `Brand ${brand} does not exist.` });
+//             }
+//             brandId = brandCheck[0].id;
+//         } else {
+//             brandId = parseInt(brand, 10);
+//             const [brandCheck] = await db.query('SELECT id FROM product_brands WHERE id = ?', [brandId]);
+//             if (brandCheck.length === 0) {
+//                 return res.status(400).json({ error: `Brand with ID ${brandId} does not exist.` });
+//             }
+//         }
+
+//         const specString = Array.isArray(specifications) ? JSON.stringify(specifications) : specifications || '';
+//         const detailsString = Array.isArray(details) ? JSON.stringify(details) : details || '';
+//         const image_paths = req.files ? req.files.map(file => file.path.replace(/\\/g, '/')) : [];
+//         const primaryImage = image_paths.length > 0 ? image_paths[0] : null;
+//         const imagePathsString = JSON.stringify(image_paths);
+
+//         const sql = `
+//             INSERT INTO products (
+//                 name, slug, sku, category, barcode, buying_price,
+//                 selling_price, offer_price, tax, brand, status,
+//                 can_purchasable, show_stock_out, refundable,
+//                 max_purchase_quantity, low_stock_warning, unit,
+//                 weight, tags, short_description, description, image_path, image_paths,
+//                 discount, specifications, details
+//             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//         `;
+
+//         const values = [
+//             name, slug || null, sku, categoryId, barcode || null, parsedBuyingPrice,
+//             parsedSellingPrice, parsedOfferPrice, tax || null, brandId, status || 'Active',
+//             can_purchasable || 'Yes', show_stock_out || 'Enable', refundable || 'Yes',
+//             parsedMaxPurchaseQty, parsedLowStockWarning, unit || null,
+//             weight || null, tags || null, short_description || null, description || null,
+//             primaryImage, imagePathsString, discount || null, specString, detailsString
+//         ];
+
+//         const [result] = await db.query(sql, values);
+
+//         res.status(201).json({ message: 'Product added successfully', productId: result.insertId });
+//     } catch (err) {
+//         console.error('Error:', err);
+//         res.status(500).json({ error: 'Failed to add product', details: err.message });
+//     }
+// });
 app.post('/api/products', authenticate, upload.array('images', 4), async (req, res) => {
     try {
         const {
@@ -2692,7 +2790,6 @@ app.post('/api/products', authenticate, upload.array('images', 4), async (req, r
         res.status(500).json({ error: 'Failed to add product', details: err.message });
     }
 });
-
 // GET - All Products
 // app.get('/api/products', async (req, res) => {
 //     try {
@@ -4895,161 +4992,161 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 
 app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  
+
     let insertedCount = 0;
     let skippedCount = 0;
     let errorLogs = [];
-  
+
     try {
-      const workbook = xlsx.readFile(req.file.path);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = xlsx.utils.sheet_to_json(sheet);
-      const totalRows = data.length;
-  
-      const uploadsDir = path.join(__dirname, 'Uploads'); // ✅ corrected path
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-  
-      const downloadImage = async (url) => {
-        try {
-          const cleanUrl = String(url || '').trim();
-          if (!cleanUrl.startsWith('http')) return null;
-  
-          const ext = path.extname(cleanUrl).split('?')[0] || '.png';
-          const fileName = Date.now() + '-' + Math.floor(Math.random() * 1000) + ext;
-          const filePath = path.join(uploadsDir, fileName);
-  
-          const response = await axios({ url: cleanUrl, method: 'GET', responseType: 'stream' });
-          await new Promise((resolve, reject) => {
-            const stream = response.data.pipe(fs.createWriteStream(filePath));
-            stream.on('finish', resolve);
-            stream.on('error', reject);
-          });
-          return `Uploads/${fileName}`;
-        } catch (err) {
-          errorLogs.push({ name: 'Image Download Failed', reason: err.message });
-          return null;
-        }
-      };
-  
-      const productsToInsert = [];
-  
-      for (const row of data) {
-        const name = String(row.Name || '').trim();
-        const sku = String(row.SKU || '').trim();
-  
-        if (!name || !sku) {
-          skippedCount++;
-          errorLogs.push({ name: name || 'N/A', reason: 'Missing name or SKU' });
-          continue;
-        }
-  
-        const [existingProduct] = await db.query('SELECT id FROM products WHERE sku = ? OR name = ?', [sku, name]);
-        if (existingProduct.length > 0) {
-          skippedCount++;
-          errorLogs.push({ name, reason: 'Duplicate SKU or Name' });
-          continue;
-        }
-  
-        let brandId = null;
-        if (row.brand) {
-          const [existingBrand] = await db.query('SELECT id FROM product_brands WHERE name = ?', [row.brand]);
-          if (existingBrand.length > 0) {
-            brandId = existingBrand[0].id;
-          } else {
-            const [insertBrand] = await db.query('INSERT INTO product_brands (name, status) VALUES (?, "Active")', [row.brand]);
-            brandId = insertBrand.insertId;
-          }
-        }
-  
-        let categoryId = null;
-        let specifications = [], details = [];
-        if (row.category) {
-          const [existingCategory] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.category]);
-          if (existingCategory.length > 0) {
-            categoryId = existingCategory[0].id;
-          } else {
-            let parentId = null;
-            if (row.parent_category) {
-              const [parentCat] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.parent_category]);
-              if (parentCat.length > 0) parentId = parentCat[0].id;
+        const workbook = xlsx.readFile(req.file.path);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = xlsx.utils.sheet_to_json(sheet);
+        const totalRows = data.length;
+
+        const uploadsDir = path.join(__dirname, 'Uploads'); // ✅ corrected path
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+        const downloadImage = async (url) => {
+            try {
+                const cleanUrl = String(url || '').trim();
+                if (!cleanUrl.startsWith('http')) return null;
+
+                const ext = path.extname(cleanUrl).split('?')[0] || '.png';
+                const fileName = Date.now() + '-' + Math.floor(Math.random() * 1000) + ext;
+                const filePath = path.join(uploadsDir, fileName);
+
+                const response = await axios({ url: cleanUrl, method: 'GET', responseType: 'stream' });
+                await new Promise((resolve, reject) => {
+                    const stream = response.data.pipe(fs.createWriteStream(filePath));
+                    stream.on('finish', resolve);
+                    stream.on('error', reject);
+                });
+                return `Uploads/${fileName}`;
+            } catch (err) {
+                errorLogs.push({ name: 'Image Download Failed', reason: err.message });
+                return null;
             }
-            const [insertCategory] = await db.query(
-              'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
-              [row.category, JSON.stringify(specifications), parentId]
-            );
-            categoryId = insertCategory.insertId;
-          }
+        };
+
+        const productsToInsert = [];
+
+        for (const row of data) {
+            const name = String(row.Name || '').trim();
+            const sku = String(row.SKU || '').trim();
+
+            if (!name || !sku) {
+                skippedCount++;
+                errorLogs.push({ name: name || 'N/A', reason: 'Missing name or SKU' });
+                continue;
+            }
+
+            const [existingProduct] = await db.query('SELECT id FROM products WHERE sku = ? OR name = ?', [sku, name]);
+            if (existingProduct.length > 0) {
+                skippedCount++;
+                errorLogs.push({ name, reason: 'Duplicate SKU or Name' });
+                continue;
+            }
+
+            let brandId = null;
+            if (row.brand) {
+                const [existingBrand] = await db.query('SELECT id FROM product_brands WHERE name = ?', [row.brand]);
+                if (existingBrand.length > 0) {
+                    brandId = existingBrand[0].id;
+                } else {
+                    const [insertBrand] = await db.query('INSERT INTO product_brands (name, status) VALUES (?, "Active")', [row.brand]);
+                    brandId = insertBrand.insertId;
+                }
+            }
+
+            let categoryId = null;
+            let specifications = [], details = [];
+            if (row.category) {
+                const [existingCategory] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.category]);
+                if (existingCategory.length > 0) {
+                    categoryId = existingCategory[0].id;
+                } else {
+                    let parentId = null;
+                    if (row.parent_category) {
+                        const [parentCat] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.parent_category]);
+                        if (parentCat.length > 0) parentId = parentCat[0].id;
+                    }
+                    const [insertCategory] = await db.query(
+                        'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
+                        [row.category, JSON.stringify(specifications), parentId]
+                    );
+                    categoryId = insertCategory.insertId;
+                }
+            }
+
+            try {
+                if (row.specifications) specifications = JSON.parse(String(row.specifications).replace(/'/g, '"'));
+                if (row.details) details = JSON.parse(String(row.details).replace(/'/g, '"'));
+            } catch (err) {
+                errorLogs.push({ name, reason: `JSON parse error: ${err.message}` });
+            }
+
+            let localImageFilename = '';
+            const localImagePaths = [];
+
+            const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
+
+            if (row.image_path) {
+                const img = await downloadImage(row.image_path);
+                if (img) localImageFilename = img;
+            }
+
+            if (row.image_paths) {
+                const paths = String(row.image_paths).split(',').map(i => i.trim());
+                for (const url of paths) {
+                    const img = await downloadImage(url);
+                    if (img) localImagePaths.push(img);
+                }
+            }
+
+            productsToInsert.push([
+                sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
+                row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
+                row.max_purchase_quantity || 10, row.low_stock_warning || 5, row.unit || 'unit',
+                row.weight || 0, row.tags || '',
+                row.short_description || '',
+                row.description || '',
+                localImageFilename,
+                localImagePaths.length ? JSON.stringify(localImagePaths) : '[]',
+                row.discount || 0,
+                JSON.stringify(specifications),
+                JSON.stringify(details),
+                name
+            ]);
+
+            insertedCount++;
         }
-  
-        try {
-          if (row.specifications) specifications = JSON.parse(String(row.specifications).replace(/'/g, '"'));
-          if (row.details) details = JSON.parse(String(row.details).replace(/'/g, '"'));
-        } catch (err) {
-          errorLogs.push({ name, reason: `JSON parse error: ${err.message}` });
-        }
-  
-        let localImageFilename = '';
-        const localImagePaths = [];
-  
-        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
-  
-        if (row.image_path) {
-          const img = await downloadImage(row.image_path);
-          if (img) localImageFilename = img;
-        }
-  
-        if (row.image_paths) {
-          const paths = String(row.image_paths).split(',').map(i => i.trim());
-          for (const url of paths) {
-            const img = await downloadImage(url);
-            if (img) localImagePaths.push(img);
-          }
-        }
-  
-        productsToInsert.push([
-          sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
-          row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
-          row.max_purchase_quantity || 10, row.low_stock_warning || 5, row.unit || 'unit',
-          row.weight || 0, row.tags || '',
-          row.short_description || '',
-          row.description || '',
-          localImageFilename,
-          localImagePaths.length ? JSON.stringify(localImagePaths) : '[]',
-          row.discount || 0,
-          JSON.stringify(specifications),
-          JSON.stringify(details),
-          name
-        ]);
-  
-        insertedCount++;
-      }
-  
-      if (productsToInsert.length) {
-        await db.query(`
+
+        if (productsToInsert.length) {
+            await db.query(`
           INSERT INTO products (
             sku, slug, category, barcode, buying_price, selling_price, offer_price, tax, brand,
             status, can_purchasable, show_stock_out, refundable, max_purchase_quantity, low_stock_warning, unit,
             weight, tags, short_description, description, image_path, image_paths, discount,
             specifications, details, name
           ) VALUES ?`, [productsToInsert]);
-      }
-  
-      fs.unlinkSync(req.file.path);
-  
-      res.json({
-        message: 'Excel import completed.',
-        totalRows,
-        inserted: insertedCount,
-        skipped: skippedCount,
-        errors: errorLogs
-      });
-  
+        }
+
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            message: 'Excel import completed.',
+            totalRows,
+            inserted: insertedCount,
+            skipped: skippedCount,
+            errors: errorLogs
+        });
+
     } catch (err) {
-      console.error('❌ Upload Error:', err);
-      if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(500).json({ error: 'Error processing Excel file' });
+        console.error('❌ Upload Error:', err);
+        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({ error: 'Error processing Excel file' });
     }
-  });
+});
 
 // app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
 //     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
