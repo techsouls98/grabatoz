@@ -1868,6 +1868,385 @@ app.put('/api/onlineorders/:order_id/status', authenticate, async (req, res) => 
         res.status(500).json({ message: "Failed to update status.", error: error.message });
     }
 });
+
+// by received orders status apis
+app.get('/api/onlineorders/received', authenticate, async (req, res) => {
+    try {
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'Received Order'`);
+
+        const formattedOrders = orders.map(order => {
+            try {
+                const parsed = JSON.parse(order.shipping_address);
+                order.shipping_address = [
+                    parsed.address,
+                    parsed.city,
+                    parsed.state,
+                    parsed.country,
+                    parsed.zip || parsed.zip_code || ""
+                ].filter(Boolean).join(', ');
+            } catch (err) {
+                console.error('❌ Address parse error for order:', order.order_id, err);
+                order.shipping_address = 'Invalid Address Data';
+            }
+
+            order.display_id = order.customer_id || order.guest_id || 'N/A';
+            return order;
+        });
+
+        res.status(200).json(formattedOrders);
+    } catch (error) {
+        console.error('❌ Error fetching received orders:', error);
+        res.status(500).json({ message: 'Failed to fetch received orders', error: error.message });
+    }
+});
+app.put('/api/onlineorders/update-received-status', authenticate, async (req, res) => {
+    const { new_status } = req.body;
+
+    const allowedStatuses = [
+        "Received Order",
+        "Inprogress Order",
+        "Ready for Shipment",
+        "On the Way",
+        "Delevered",
+        "On Hold",
+        "Rejected"
+    ];
+
+    if (!allowedStatuses.includes(new_status)) {
+        return res.status(400).json({ message: "Invalid new status provided." });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'Received Order'",
+            [new_status]
+        );
+
+        res.status(200).json({
+            message: `Updated ${result.affectedRows} order(s) from 'Received Order' to '${new_status}'`,
+            updatedCount: result.affectedRows
+        });
+    } catch (error) {
+        console.error("❌ Error updating statuses:", error);
+        res.status(500).json({ message: "Failed to update statuses.", error: error.message });
+    }
+});
+// by inprogress orders status apis
+app.get('/api/onlineorders/inprogress', authenticate, async (req, res) => {
+    try {
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'Inprogress Order'`);
+
+        const formattedOrders = orders.map(order => {
+            try {
+                const parsed = JSON.parse(order.shipping_address);
+                order.shipping_address = [
+                    parsed.address,
+                    parsed.city,
+                    parsed.state,
+                    parsed.country,
+                    parsed.zip || parsed.zip_code || ""
+                ].filter(Boolean).join(', ');
+            } catch (err) {
+                console.error('❌ Address parse error for order:', order.order_id, err);
+                order.shipping_address = 'Invalid Address Data';
+            }
+
+            order.display_id = order.customer_id || order.guest_id || 'N/A';
+            return order;
+        });
+
+        res.status(200).json(formattedOrders);
+    } catch (error) {
+        console.error('❌ Error fetching inprogress orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
+    }
+});
+app.put('/api/onlineorders/update-inprogress-status', authenticate, async (req, res) => {
+    const { new_status } = req.body;
+
+    const allowedStatuses = [
+        "Received Order",
+        "Inprogress Order",
+        "Ready for Shipment",
+        "On the Way",
+        "Delevered",
+        "On Hold",
+        "Rejected"
+    ];
+
+    if (!allowedStatuses.includes(new_status)) {
+        return res.status(400).json({ message: "Invalid new status provided." });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'Inprogress Order'",
+            [new_status]
+        );
+
+        res.status(200).json({
+            message: `Updated ${result.affectedRows} order(s) from 'Inprogress Order' to '${new_status}'`,
+            updatedCount: result.affectedRows
+        });
+    } catch (error) {
+        console.error("❌ Error updating statuses:", error);
+        res.status(500).json({ message: "Failed to update statuses.", error: error.message });
+    }
+});
+// by ready-for-shipment orders status apis 
+app.get('/api/onlineorders/ready-for-shipment', authenticate, async (req, res) => {
+    try {
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'Ready for Shipment'`);
+
+        const formattedOrders = orders.map(order => {
+            try {
+                const parsed = JSON.parse(order.shipping_address);
+                order.shipping_address = [
+                    parsed.address,
+                    parsed.city,
+                    parsed.state,
+                    parsed.country,
+                    parsed.zip || parsed.zip_code || ""
+                ].filter(Boolean).join(', ');
+            } catch (err) {
+                console.error('❌ Address parse error for order:', order.order_id, err);
+                order.shipping_address = 'Invalid Address Data';
+            }
+
+            order.display_id = order.customer_id || order.guest_id || 'N/A';
+            return order;
+        });
+
+        res.status(200).json(formattedOrders);
+    } catch (error) {
+        console.error('❌ Error fetching orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
+    }
+});
+app.put('/api/onlineorders/update-ready-status', authenticate, async (req, res) => {
+    const { new_status } = req.body;
+
+    const allowedStatuses = [
+        "Received Order",
+        "Inprogress Order",
+        "Ready for Shipment",
+        "On the Way",
+        "Delevered",
+        "On Hold",
+        "Rejected"
+    ];
+
+    if (!allowedStatuses.includes(new_status)) {
+        return res.status(400).json({ message: "Invalid new status provided." });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'Ready for Shipment'",
+            [new_status]
+        );
+
+        res.status(200).json({
+            message: `Updated ${result.affectedRows} order(s) from 'Ready for Shipment' to '${new_status}'`,
+            updatedCount: result.affectedRows
+        });
+    } catch (error) {
+        console.error("❌ Error updating statuses:", error);
+        res.status(500).json({ message: "Failed to update statuses.", error: error.message });
+    }
+});
+// by On the Way orders status apis 
+app.get('/api/onlineorders/on-the-way', authenticate, async (req, res) => {
+    try {
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'On the Way'`);
+
+        const formattedOrders = orders.map(order => {
+            try {
+                const parsed = JSON.parse(order.shipping_address);
+                order.shipping_address = [
+                    parsed.address,
+                    parsed.city,
+                    parsed.state,
+                    parsed.country,
+                    parsed.zip || parsed.zip_code || ""
+                ].filter(Boolean).join(', ');
+            } catch (err) {
+                console.error('❌ Address parse error for order:', order.order_id, err);
+                order.shipping_address = 'Invalid Address Data';
+            }
+
+            order.display_id = order.customer_id || order.guest_id || 'N/A';
+            return order;
+        });
+
+        res.status(200).json(formattedOrders);
+    } catch (error) {
+        console.error('❌ Failed to fetch "On the Way" orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
+    }
+});
+app.put('/api/onlineorders/update-on-the-way-status', authenticate, async (req, res) => {
+    const { new_status } = req.body;
+
+    const allowedStatuses = [
+        "Received Order",
+        "Inprogress Order",
+        "Ready for Shipment",
+        "On the Way",
+        "Delevered",
+        "On Hold",
+        "Rejected"
+    ];
+
+    if (!allowedStatuses.includes(new_status)) {
+        return res.status(400).json({ message: "Invalid new status provided." });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'On the Way'",
+            [new_status]
+        );
+
+        res.status(200).json({
+            message: `Updated ${result.affectedRows} order(s) from 'On the Way' to '${new_status}'`,
+            updatedCount: result.affectedRows
+        });
+    } catch (error) {
+        console.error("❌ Error updating 'On the Way' statuses:", error);
+        res.status(500).json({ message: "Failed to update statuses.", error: error.message });
+    }
+});
+// by Delevered orders status apis 
+app.get('/api/onlineorders/delevered', authenticate, async (req, res) => {
+    try {
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'Delevered'`);
+
+        const formattedOrders = orders.map(order => {
+            try {
+                const parsed = JSON.parse(order.shipping_address);
+                order.shipping_address = [
+                    parsed.address,
+                    parsed.city,
+                    parsed.state,
+                    parsed.country,
+                    parsed.zip || parsed.zip_code || ""
+                ].filter(Boolean).join(', ');
+            } catch (err) {
+                console.error('❌ Address parse error for order:', order.order_id, err);
+                order.shipping_address = 'Invalid Address Data';
+            }
+
+            order.display_id = order.customer_id || order.guest_id || 'N/A';
+            return order;
+        });
+
+        res.status(200).json(formattedOrders);
+    } catch (error) {
+        console.error('❌ Failed to fetch "Delevered" orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
+    }
+});
+app.put('/api/onlineorders/update-delevered-status', authenticate, async (req, res) => {
+    const { new_status } = req.body;
+
+    const allowedStatuses = [
+        "Received Order",
+        "Inprogress Order",
+        "Ready for Shipment",
+        "On the Way",
+        "Delevered",
+        "On Hold",
+        "Rejected"
+    ];
+
+    if (!allowedStatuses.includes(new_status)) {
+        return res.status(400).json({ message: "Invalid new status provided." });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'Delevered'",
+            [new_status]
+        );
+
+        res.status(200).json({
+            message: `Updated ${result.affectedRows} order(s) from 'Delevered' to '${new_status}'`,
+            updatedCount: result.affectedRows
+        });
+    } catch (error) {
+        console.error("❌ Error updating 'Delevered' statuses:", error);
+        res.status(500).json({ message: "Failed to update statuses.", error: error.message });
+    }
+});
+// by on-hold orders status apis 
+app.get('/api/onlineorders/on-hold', authenticate, async (req, res) => {
+    try {
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'On Hold'`);
+
+        const formattedOrders = orders.map(order => {
+            try {
+                const parsed = JSON.parse(order.shipping_address);
+                order.shipping_address = [
+                    parsed.address,
+                    parsed.city,
+                    parsed.state,
+                    parsed.country,
+                    parsed.zip || parsed.zip_code || ""
+                ].filter(Boolean).join(', ');
+            } catch (err) {
+                console.error('❌ Address parse error for order:', order.order_id, err);
+                order.shipping_address = 'Invalid Address Data';
+            }
+
+            order.display_id = order.customer_id || order.guest_id || 'N/A';
+            return order;
+        });
+
+        res.status(200).json(formattedOrders);
+    } catch (error) {
+        console.error('❌ Failed to fetch "On Hold" orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
+    }
+});
+app.put('/api/onlineorders/update-on-hold-status', authenticate, async (req, res) => {
+    const { new_status } = req.body;
+
+    const allowedStatuses = [
+        "Received Order",
+        "Inprogress Order",
+        "Ready for Shipment",
+        "On the Way",
+        "Delevered",
+        "On Hold",
+        "Rejected"
+    ];
+
+    if (!allowedStatuses.includes(new_status)) {
+        return res.status(400).json({ message: "Invalid new status provided." });
+    }
+
+    try {
+        const [result] = await db.query(
+            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'On Hold'",
+            [new_status]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "No orders with 'On Hold' status found." });
+        }
+
+        res.status(200).json({
+            message: `Updated ${result.affectedRows} order(s) from 'On Hold' to '${new_status}'`,
+            updatedCount: result.affectedRows
+        });
+    } catch (error) {
+        console.error("❌ Error updating 'On Hold' statuses:", error);
+        res.status(500).json({ message: "Failed to update statuses.", error: error.message });
+    }
+});
+
+
 // Update Order Status
 // app.put('/api/online-orders/:order_id/status', authenticate, async (req, res) => {
 //     const { status } = req.body;
@@ -4893,163 +5272,320 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //     }
 // });
 
+// app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
+//     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+//     let insertedCount = 0;
+//     let skippedCount = 0;
+//     let errorLogs = [];
+
+//     try {
+//         const workbook = xlsx.readFile(req.file.path);
+//         const sheet = workbook.Sheets[workbook.SheetNames[0]];
+//         const data = xlsx.utils.sheet_to_json(sheet);
+//         const totalRows = data.length;
+
+//         const uploadsDir = path.join(__dirname, 'Uploads'); // ✅ corrected path
+//         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+//         const downloadImage = async (url) => {
+//             try {
+//                 const cleanUrl = String(url || '').trim();
+//                 if (!cleanUrl.startsWith('http')) return null;
+
+//                 const ext = path.extname(cleanUrl).split('?')[0] || '.png';
+//                 const fileName = Date.now() + '-' + Math.floor(Math.random() * 1000) + ext;
+//                 const filePath = path.join(uploadsDir, fileName);
+
+//                 const response = await axios({ url: cleanUrl, method: 'GET', responseType: 'stream' });
+//                 await new Promise((resolve, reject) => {
+//                     const stream = response.data.pipe(fs.createWriteStream(filePath));
+//                     stream.on('finish', resolve);
+//                     stream.on('error', reject);
+//                 });
+//                 return `Uploads/${fileName}`;
+//             } catch (err) {
+//                 errorLogs.push({ name: 'Image Download Failed', reason: err.message });
+//                 return null;
+//             }
+//         };
+
+//         const productsToInsert = [];
+
+//         for (const row of data) {
+//             const name = String(row.Name || '').trim();
+//             const sku = String(row.SKU || '').trim();
+
+//             if (!name || !sku) {
+//                 skippedCount++;
+//                 errorLogs.push({ name: name || 'N/A', reason: 'Missing name or SKU' });
+//                 continue;
+//             }
+
+//             const [existingProduct] = await db.query('SELECT id FROM products WHERE sku = ? OR name = ?', [sku, name]);
+//             if (existingProduct.length > 0) {
+//                 skippedCount++;
+//                 errorLogs.push({ name, reason: 'Duplicate SKU or Name' });
+//                 continue;
+//             }
+
+//             let brandId = null;
+//             if (row.brand) {
+//                 const [existingBrand] = await db.query('SELECT id FROM product_brands WHERE name = ?', [row.brand]);
+//                 if (existingBrand.length > 0) {
+//                     brandId = existingBrand[0].id;
+//                 } else {
+//                     const [insertBrand] = await db.query('INSERT INTO product_brands (name, status) VALUES (?, "Active")', [row.brand]);
+//                     brandId = insertBrand.insertId;
+//                 }
+//             }
+
+//             let categoryId = null;
+//             let specifications = [], details = [];
+//             if (row.category) {
+//                 const [existingCategory] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.category]);
+//                 if (existingCategory.length > 0) {
+//                     categoryId = existingCategory[0].id;
+//                 } else {
+//                     let parentId = null;
+//                     if (row.parent_category) {
+//                         const [parentCat] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.parent_category]);
+//                         if (parentCat.length > 0) parentId = parentCat[0].id;
+//                     }
+//                     const [insertCategory] = await db.query(
+//                         'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
+//                         [row.category, JSON.stringify(specifications), parentId]
+//                     );
+//                     categoryId = insertCategory.insertId;
+//                 }
+//             }
+
+//             try {
+//                 if (row.specifications) specifications = JSON.parse(String(row.specifications).replace(/'/g, '"'));
+//                 if (row.details) details = JSON.parse(String(row.details).replace(/'/g, '"'));
+//             } catch (err) {
+//                 errorLogs.push({ name, reason: `JSON parse error: ${err.message}` });
+//             }
+
+//             let localImageFilename = '';
+//             const localImagePaths = [];
+
+//             const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
+
+//             if (row.image_path) {
+//                 const img = await downloadImage(row.image_path);
+//                 if (img) localImageFilename = img;
+//             }
+
+//             if (row.image_paths) {
+//                 const paths = String(row.image_paths).split(',').map(i => i.trim());
+//                 for (const url of paths) {
+//                     const img = await downloadImage(url);
+//                     if (img) localImagePaths.push(img);
+//                 }
+//             }
+
+//             productsToInsert.push([
+//                 sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
+//                 row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
+//                 row.max_purchase_quantity || 10, row.low_stock_warning || 5, row.unit || 'unit',
+//                 row.weight || 0, row.tags || '',
+//                 row.short_description || '',
+//                 row.description || '',
+//                 localImageFilename,
+//                 localImagePaths.length ? JSON.stringify(localImagePaths) : '[]',
+//                 row.discount || 0,
+//                 JSON.stringify(specifications),
+//                 JSON.stringify(details),
+//                 name
+//             ]);
+
+//             insertedCount++;
+//         }
+
+//         if (productsToInsert.length) {
+//             await db.query(`
+//           INSERT INTO products (
+//             sku, slug, category, barcode, buying_price, selling_price, offer_price, tax, brand,
+//             status, can_purchasable, show_stock_out, refundable, max_purchase_quantity, low_stock_warning, unit,
+//             weight, tags, short_description, description, image_path, image_paths, discount,
+//             specifications, details, name
+//           ) VALUES ?`, [productsToInsert]);
+//         }
+
+//         fs.unlinkSync(req.file.path);
+
+//         res.json({
+//             message: 'Excel import completed.',
+//             totalRows,
+//             inserted: insertedCount,
+//             skipped: skippedCount,
+//             errors: errorLogs
+//         });
+
+//     } catch (err) {
+//         console.error('❌ Upload Error:', err);
+//         if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+//         res.status(500).json({ error: 'Error processing Excel file' });
+//     }
+// });
 app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  
+
     let insertedCount = 0;
+    let updatedCount = 0;
     let skippedCount = 0;
     let errorLogs = [];
-  
+
     try {
-      const workbook = xlsx.readFile(req.file.path);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = xlsx.utils.sheet_to_json(sheet);
-      const totalRows = data.length;
-  
-      const uploadsDir = path.join(__dirname, 'Uploads'); // ✅ corrected path
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-  
-      const downloadImage = async (url) => {
-        try {
-          const cleanUrl = String(url || '').trim();
-          if (!cleanUrl.startsWith('http')) return null;
-  
-          const ext = path.extname(cleanUrl).split('?')[0] || '.png';
-          const fileName = Date.now() + '-' + Math.floor(Math.random() * 1000) + ext;
-          const filePath = path.join(uploadsDir, fileName);
-  
-          const response = await axios({ url: cleanUrl, method: 'GET', responseType: 'stream' });
-          await new Promise((resolve, reject) => {
-            const stream = response.data.pipe(fs.createWriteStream(filePath));
-            stream.on('finish', resolve);
-            stream.on('error', reject);
-          });
-          return `Uploads/${fileName}`;
-        } catch (err) {
-          errorLogs.push({ name: 'Image Download Failed', reason: err.message });
-          return null;
-        }
-      };
-  
-      const productsToInsert = [];
-  
-      for (const row of data) {
-        const name = String(row.Name || '').trim();
-        const sku = String(row.SKU || '').trim();
-  
-        if (!name || !sku) {
-          skippedCount++;
-          errorLogs.push({ name: name || 'N/A', reason: 'Missing name or SKU' });
-          continue;
-        }
-  
-        const [existingProduct] = await db.query('SELECT id FROM products WHERE sku = ? OR name = ?', [sku, name]);
-        if (existingProduct.length > 0) {
-          skippedCount++;
-          errorLogs.push({ name, reason: 'Duplicate SKU or Name' });
-          continue;
-        }
-  
-        let brandId = null;
-        if (row.brand) {
-          const [existingBrand] = await db.query('SELECT id FROM product_brands WHERE name = ?', [row.brand]);
-          if (existingBrand.length > 0) {
-            brandId = existingBrand[0].id;
-          } else {
-            const [insertBrand] = await db.query('INSERT INTO product_brands (name, status) VALUES (?, "Active")', [row.brand]);
-            brandId = insertBrand.insertId;
-          }
-        }
-  
-        let categoryId = null;
-        let specifications = [], details = [];
-        if (row.category) {
-          const [existingCategory] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.category]);
-          if (existingCategory.length > 0) {
-            categoryId = existingCategory[0].id;
-          } else {
-            let parentId = null;
-            if (row.parent_category) {
-              const [parentCat] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.parent_category]);
-              if (parentCat.length > 0) parentId = parentCat[0].id;
+        const workbook = xlsx.readFile(req.file.path);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = xlsx.utils.sheet_to_json(sheet);
+        const uploadsDir = path.join(__dirname, 'Uploads');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+        const downloadImage = async (url) => {
+            try {
+                const cleanUrl = String(url || '').trim();
+                if (!cleanUrl.startsWith('http')) return null;
+
+                const ext = path.extname(cleanUrl).split('?')[0] || '.png';
+                const fileName = Date.now() + '-' + Math.floor(Math.random() * 1000) + ext;
+                const filePath = path.join(uploadsDir, fileName);
+
+                const response = await axios({ url: cleanUrl, method: 'GET', responseType: 'stream' });
+                await new Promise((resolve, reject) => {
+                    const stream = response.data.pipe(fs.createWriteStream(filePath));
+                    stream.on('finish', resolve);
+                    stream.on('error', reject);
+                });
+                return `Uploads/${fileName}`;
+            } catch (err) {
+                errorLogs.push({ name: 'Image Download Failed', reason: err.message });
+                return null;
             }
-            const [insertCategory] = await db.query(
-              'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
-              [row.category, JSON.stringify(specifications), parentId]
-            );
-            categoryId = insertCategory.insertId;
-          }
+        };
+
+        for (const row of data) {
+            const name = String(row.Name || '').trim();
+            const sku = String(row.SKU || '').trim();
+            if (!name || !sku) {
+                skippedCount++;
+                errorLogs.push({ name: name || 'N/A', reason: 'Missing name or SKU' });
+                continue;
+            }
+
+            let brandId = null;
+            if (row.brand) {
+                const [existingBrand] = await db.query('SELECT id FROM product_brands WHERE name = ?', [row.brand]);
+                if (existingBrand.length > 0) {
+                    brandId = existingBrand[0].id;
+                } else {
+                    const [insertBrand] = await db.query('INSERT INTO product_brands (name, status) VALUES (?, "Active")', [row.brand]);
+                    brandId = insertBrand.insertId;
+                }
+            }
+
+            let categoryId = null;
+            let specifications = [], details = [];
+            try {
+                if (row.specifications) specifications = JSON.parse(String(row.specifications).replace(/'/g, '"'));
+                if (row.details) details = JSON.parse(String(row.details).replace(/'/g, '"'));
+            } catch (err) {
+                errorLogs.push({ name, reason: `JSON parse error: ${err.message}` });
+            }
+
+            if (row.category) {
+                const [existingCategory] = await db.query('SELECT * FROM product_categories WHERE name = ?', [row.category]);
+                if (existingCategory.length > 0) {
+                    const cat = existingCategory[0];
+                    categoryId = cat.id;
+                    const oldSpecs = cat.specs || '[]';
+                    if (oldSpecs !== JSON.stringify(specifications)) {
+                        await db.query('UPDATE product_categories SET specs = ? WHERE id = ?', [JSON.stringify(specifications), categoryId]);
+                    }
+                } else {
+                    let parentId = null;
+                    if (row.parent_category) {
+                        const [parentCat] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.parent_category]);
+                        if (parentCat.length > 0) parentId = parentCat[0].id;
+                    }
+                    const [insertCategory] = await db.query(
+                        'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
+                        [row.category, JSON.stringify(specifications), parentId]
+                    );
+                    categoryId = insertCategory.insertId;
+                }
+            }
+
+            const slug = row.slug
+                ? String(row.slug).trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '')
+                : name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
+
+            const localImageFilename = await downloadImage(row.image_path);
+            const localImagePaths = [];
+            if (row.image_paths) {
+                const paths = String(row.image_paths).split(',').map(i => i.trim());
+                for (const url of paths) {
+                    const img = await downloadImage(url);
+                    if (img) localImagePaths.push(img);
+                }
+            }
+
+            const [existingProduct] = await db.query('SELECT * FROM products WHERE sku = ?', [sku]);
+            if (existingProduct.length > 0) {
+                const prod = existingProduct[0];
+                await db.query(
+                    `UPDATE products SET 
+                        slug=?, category=?, barcode=?, buying_price=?, selling_price=?, offer_price=?, tax=?, brand=?,
+                        tags=?, short_description=?, description=?, image_path=?, image_paths=?, discount=?, 
+                        specifications=?, details=?, name=?
+                     WHERE id=?`,
+                    [
+                        slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
+                        row.offer_price || 0, row.tax || 'VAT-1', brandId,
+                        row.tags || '', row.short_description || '', row.description || row['description.1'] || '',
+                        localImageFilename, JSON.stringify(localImagePaths), row.discount || 0,
+                        JSON.stringify(specifications), JSON.stringify(details), name, prod.id
+                    ]
+                );
+                updatedCount++;
+            } else {
+                await db.query(
+                    `INSERT INTO products (
+                        sku, slug, category, barcode, buying_price, selling_price, offer_price, tax, brand,
+                        status, can_purchasable, show_stock_out, refundable, max_purchase_quantity, low_stock_warning,
+                        unit, weight, tags, short_description, description, image_path, image_paths, discount,
+                        specifications, details, name
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "Active", "Yes", "Enable", "Yes", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
+                        row.offer_price || 0, row.tax || 'VAT-1', brandId,
+                        row.max_purchase_quantity || 10, row.low_stock_warning || 5, row.unit || 'unit',
+                        row.weight || 0, row.tags || '', row.short_description || '', row.description || row['description.1'] || '',
+                        localImageFilename, JSON.stringify(localImagePaths), row.discount || 0,
+                        JSON.stringify(specifications), JSON.stringify(details), name
+                    ]
+                );
+                insertedCount++;
+            }
         }
-  
-        try {
-          if (row.specifications) specifications = JSON.parse(String(row.specifications).replace(/'/g, '"'));
-          if (row.details) details = JSON.parse(String(row.details).replace(/'/g, '"'));
-        } catch (err) {
-          errorLogs.push({ name, reason: `JSON parse error: ${err.message}` });
-        }
-  
-        let localImageFilename = '';
-        const localImagePaths = [];
-  
-        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
-  
-        if (row.image_path) {
-          const img = await downloadImage(row.image_path);
-          if (img) localImageFilename = img;
-        }
-  
-        if (row.image_paths) {
-          const paths = String(row.image_paths).split(',').map(i => i.trim());
-          for (const url of paths) {
-            const img = await downloadImage(url);
-            if (img) localImagePaths.push(img);
-          }
-        }
-  
-        productsToInsert.push([
-          sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
-          row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
-          row.max_purchase_quantity || 10, row.low_stock_warning || 5, row.unit || 'unit',
-          row.weight || 0, row.tags || '',
-          row.short_description || '',
-          row.description || '',
-          localImageFilename,
-          localImagePaths.length ? JSON.stringify(localImagePaths) : '[]',
-          row.discount || 0,
-          JSON.stringify(specifications),
-          JSON.stringify(details),
-          name
-        ]);
-  
-        insertedCount++;
-      }
-  
-      if (productsToInsert.length) {
-        await db.query(`
-          INSERT INTO products (
-            sku, slug, category, barcode, buying_price, selling_price, offer_price, tax, brand,
-            status, can_purchasable, show_stock_out, refundable, max_purchase_quantity, low_stock_warning, unit,
-            weight, tags, short_description, description, image_path, image_paths, discount,
-            specifications, details, name
-          ) VALUES ?`, [productsToInsert]);
-      }
-  
-      fs.unlinkSync(req.file.path);
-  
-      res.json({
-        message: 'Excel import completed.',
-        totalRows,
-        inserted: insertedCount,
-        skipped: skippedCount,
-        errors: errorLogs
-      });
-  
+
+        fs.unlinkSync(req.file.path);
+        res.json({
+            message: 'Excel import completed.',
+            inserted: insertedCount,
+            updated: updatedCount,
+            skipped: skippedCount,
+            errors: errorLogs
+        });
+
     } catch (err) {
-      console.error('❌ Upload Error:', err);
-      if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(500).json({ error: 'Error processing Excel file' });
+        console.error('❌ Upload Error:', err);
+        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({ error: 'Error processing Excel file' });
     }
-  });
+});
 
 // app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
 //     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
