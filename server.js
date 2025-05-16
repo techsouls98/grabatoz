@@ -5429,6 +5429,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //         res.status(500).json({ error: 'Error processing Excel file' });
 //     }
 // });
+
 app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -5445,63 +5446,20 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
         const uploadsDir = path.join(__dirname, 'Uploads');
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-        const downloadImage = async (url) => {
-            try {
-                const cleanUrl = String(url || '').trim();
-                if (!cleanUrl.startsWith('http')) return null;
-
-                const ext = path.extname(cleanUrl).split('?')[0] || '.png';
-                const fileName = Date.now() + '-' + Math.floor(Math.random() * 1000) + ext;
-                const filePath = path.join(uploadsDir, fileName);
-
-                const response = await axios({ url: cleanUrl, method: 'GET', responseType: 'stream' });
-                await new Promise((resolve, reject) => {
-                    const stream = response.data.pipe(fs.createWriteStream(filePath));
-                    stream.on('finish', resolve);
-                    stream.on('error', reject);
-                });
-                return `Uploads/${fileName}`;
-            } catch (err) {
-                errorLogs.push({ name: 'Image Download Failed', reason: err.message });
-                return null;
-            }
-        };
+        // ... [keep the existing downloadImage function and other setup code] ...
 
         const productsToInsert = [];
 
         for (const row of data) {
-            const name = String(row.Name || '').trim();
-            const sku = String(row.SKU || '').trim();
+            // ... [keep existing name/sku validation and duplicate checking] ...
 
-            if (!name || !sku) {
-                skippedCount++;
-                errorLogs.push({ name: name || 'N/A', reason: 'Missing name or SKU' });
-                continue;
-            }
-
-            const [existingProduct] = await db.query('SELECT id FROM products WHERE sku = ? OR name = ?', [sku, name]);
-            if (existingProduct.length > 0) {
-                skippedCount++;
-                errorLogs.push({ name, reason: 'Duplicate SKU or Name' });
-                continue;
-            }
-
-            let brandId = null;
-            if (row.brand) {
-                const [existingBrand] = await db.query('SELECT id FROM product_brands WHERE name = ?', [row.brand]);
-                if (existingBrand.length > 0) {
-                    brandId = existingBrand[0].id;
-                } else {
-                    const [insertBrand] = await db.query('INSERT INTO product_brands (name, status) VALUES (?, "Active")', [row.brand]);
-                    brandId = insertBrand.insertId;
-                }
-            }
+            // ... [keep existing brand handling code] ...
 
             let categoryId = null;
             let specifications = [];
             let details = [];
 
-            // Process specifications
+            // Process specifications (keep existing code)
             try {
                 if (row.specifications) {
                     const specsString = String(row.specifications).trim();
@@ -5515,111 +5473,80 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 errorLogs.push({ name, reason: `Specifications parse error: ${err.message}` });
             }
 
-            // Process details - improved handling
+            // NEW IMPROVED DETAILS PROCESSING
             try {
                 if (row.details) {
-                    const detailsString = String(row.details).trim();
+                    let detailsString = String(row.details).trim();
 
-                    // Check if it's a JSON array string
+                    // Handle the specific format from your Excel file
                     if (detailsString.startsWith('[') && detailsString.endsWith(']')) {
-                        // Clean the string by removing HTML tags and fixing quotes
-                        const cleanedDetails = detailsString
-                            .replace(/<br\s*\/?>/g, '\n')
-                            .replace(/\\"/g, '"')
-                            .replace(/'/g, '"');
+                        // Clean up the string - remove HTML tags and fix quotes
+                        detailsString = detailsString
+                            .replace(/<br\s*\/?>/gi, '') // Remove <br> tags
+                            .replace(/\\"/g, '"')        // Fix escaped quotes
+                            .replace(/'/g, '"')          // Replace single quotes with double
+                            .replace(/(\w)"(\w)/g, '$1\\"$2'); // Fix words with quotes between them
 
                         try {
-                            details = JSON.parse(cleanedDetails);
+                            details = JSON.parse(detailsString);
                         } catch (parseError) {
-                            // If JSON parsing fails, treat as comma-separated values
-                            details = detailsString.split(',').map(item => item.trim());
+                            // If JSON parsing fails, try to fix common issues
+                            detailsString = detailsString
+                                .replace(/,\s*]/g, ']')  // Remove trailing commas
+                                .replace(/,\s*$/g, '')   // Remove trailing commas
+                                .replace(/"\s*,\s*"/g, '","'); // Ensure proper comma separation
+
+                            try {
+                                details = JSON.parse(detailsString);
+                            } catch (finalError) {
+                                // If still fails, treat as comma-separated values
+                                details = detailsString
+                                    .slice(1, -1) // Remove brackets
+                                    .split(',')
+                                    .map(item => item.trim().replace(/^"(.*)"$/, '$1'));
+                            }
                         }
                     } else {
-                        // Treat as comma-separated values
-                        details = detailsString.split(',').map(item => item.trim());
+                        // If not in array format, treat as single value
+                        details = [detailsString];
                     }
 
-                    // Ensure details is an array
+                    // Ensure we always have an array
                     if (!Array.isArray(details)) {
                         details = [details];
                     }
+
+                    // Clean each detail item
+                    details = details.map(item =>
+                        String(item)
+                            .replace(/<br\s*\/?>/gi, '\n')
+                            .replace(/\\"/g, '"')
+                            .trim()
+                    );
                 }
             } catch (err) {
+                console.error('Details processing error:', err);
                 errorLogs.push({ name, reason: `Details parse error: ${err.message}` });
                 details = []; // Fallback to empty array
             }
 
-            if (row.category) {
-                const [existingCategory] = await db.query('SELECT id, specs FROM product_categories WHERE name = ?', [row.category]);
-                if (existingCategory.length > 0) {
-                    categoryId = existingCategory[0].id;
+            // ... [keep existing category handling code] ...
 
-                    if (specifications.length > 0) {
-                        let currentSpecs = [];
-                        try {
-                            currentSpecs = existingCategory[0].specs ? JSON.parse(existingCategory[0].specs) : [];
-                        } catch (e) {
-                            currentSpecs = [];
-                        }
+            // ... [keep existing image handling code] ...
 
-                        if (currentSpecs.length === 0 || JSON.stringify(currentSpecs) !== JSON.stringify(specifications)) {
-                            await db.query(
-                                'UPDATE product_categories SET specs = ? WHERE id = ?',
-                                [JSON.stringify(specifications), categoryId]
-                            );
-                        }
-                    }
-                } else {
-                    let parentId = null;
-                    if (row.parent_category) {
-                        const [parentCat] = await db.query('SELECT id FROM product_categories WHERE name = ?', [row.parent_category]);
-                        if (parentCat.length > 0) parentId = parentCat[0].id;
-                    }
-
-                    const [insertCategory] = await db.query(
-                        'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
-                        [row.category, JSON.stringify(specifications), parentId]
-                    );
-                    categoryId = insertCategory.insertId;
-                }
-            }
-
-            let localImageFilename = '';
-            const localImagePaths = [];
-
-            const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
-
-            if (row.image_path) {
-                const img = await downloadImage(row.image_path);
-                if (img) localImageFilename = img;
-            }
-
-            if (row.image_paths) {
-                const paths = String(row.image_paths).split(',').map(i => i.trim());
-                for (const url of paths) {
-                    const img = await downloadImage(url);
-                    if (img) localImagePaths.push(img);
-                }
-            }
-
-            // Prepare the full description by combining short_description and description
-            const fullDescription = [
-                row.short_description || '',
-                row.description || ''
-            ].filter(Boolean).join('\n\n');
-
+            // Prepare product data for insertion
             productsToInsert.push([
                 sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
                 row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
                 row.max_purchase_quantity || 10, row.low_stock_warning || 5, row.unit || 'unit',
                 row.weight || 0, row.tags || '',
                 row.short_description || '',
-                fullDescription, // Using combined description
+                row.description || '',
                 localImageFilename,
                 localImagePaths.length ? JSON.stringify(localImagePaths) : '[]',
                 row.discount || 0,
                 JSON.stringify(specifications),
-                JSON.stringify(details), // Properly formatted details
+                JSON.stringify(details), // This will now properly store the details
                 name
             ]);
 
@@ -5652,6 +5579,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
         res.status(500).json({ error: 'Error processing Excel file' });
     }
 });
+
 // app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
 //     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
