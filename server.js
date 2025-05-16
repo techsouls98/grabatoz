@@ -5502,7 +5502,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
             let specifications = [];
             let details = [];
 
-            // Parse specs and details
+            // ✅ Parse specifications and details
             try {
                 if (row.specifications) {
                     specifications = JSON.parse(String(row.specifications).replace(/'/g, '"'));
@@ -5519,18 +5519,24 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 errorLogs.push({ name, reason: `JSON parse error in details: ${err.message}` });
             }
 
-            // Category handling
+            // ✅ Category insert/update with specs
             if (row.category) {
                 const [existingCategory] = await db.query('SELECT id, specs FROM product_categories WHERE name = ?', [row.category]);
+
                 if (existingCategory.length > 0) {
                     categoryId = existingCategory[0].id;
 
-                    const currentSpecs = JSON.parse(existingCategory[0].specs || '[]');
-                    const specsChanged = JSON.stringify(currentSpecs.sort()) !== JSON.stringify(specifications.sort());
+                    try {
+                        const currentSpecs = JSON.parse(existingCategory[0].specs || '[]');
+                        const specsChanged = JSON.stringify([...new Set(currentSpecs)].sort()) !== JSON.stringify([...new Set(specifications)].sort());
 
-                    if (specsChanged && specifications.length > 0) {
-                        await db.query('UPDATE product_categories SET specs = ? WHERE id = ?', [JSON.stringify(specifications), categoryId]);
+                        if (specsChanged && specifications.length > 0) {
+                            await db.query('UPDATE product_categories SET specs = ? WHERE id = ?', [JSON.stringify(specifications), categoryId]);
+                        }
+                    } catch (err) {
+                        errorLogs.push({ name: row.category, reason: `Failed to parse/update category specs: ${err.message}` });
                     }
+
                 } else {
                     let parentId = null;
                     if (row.parent_category) {
@@ -5542,14 +5548,14 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                         'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
                         [row.category, JSON.stringify(specifications), parentId]
                     );
+
                     categoryId = insertCategory.insertId;
                 }
             }
 
-            // Image processing
+            // ✅ Image download
             let localImageFilename = '';
             const localImagePaths = [];
-
             const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
 
             if (row.image_path) {
@@ -5565,7 +5571,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 }
             }
 
-            // Prepare product data
+            // ✅ Final product insert data
             productsToInsert.push([
                 sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
                 row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
@@ -5584,7 +5590,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
             insertedCount++;
         }
 
-        // Insert all products at once
         if (productsToInsert.length) {
             await db.query(`
                 INSERT INTO products (
