@@ -5429,7 +5429,6 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //         res.status(500).json({ error: 'Error processing Excel file' });
 //     }
 // });
-
 app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -5502,10 +5501,9 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
             let specifications = [];
             let details = [];
 
-            // Process specifications and details first
+            // Process specifications
             try {
                 if (row.specifications) {
-                    // Clean and parse specifications
                     const specsString = String(row.specifications).trim();
                     if (specsString.startsWith('[') && specsString.endsWith(']')) {
                         specifications = JSON.parse(specsString.replace(/<br\s*\/?>/g, '\n'));
@@ -5513,18 +5511,42 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                         specifications = specsString.split(',').map(item => item.trim());
                     }
                 }
+            } catch (err) {
+                errorLogs.push({ name, reason: `Specifications parse error: ${err.message}` });
+            }
 
+            // Process details - improved handling
+            try {
                 if (row.details) {
-                    // Clean and parse details
                     const detailsString = String(row.details).trim();
+
+                    // Check if it's a JSON array string
                     if (detailsString.startsWith('[') && detailsString.endsWith(']')) {
-                        details = JSON.parse(detailsString.replace(/<br\s*\/?>/g, '\n'));
+                        // Clean the string by removing HTML tags and fixing quotes
+                        const cleanedDetails = detailsString
+                            .replace(/<br\s*\/?>/g, '\n')
+                            .replace(/\\"/g, '"')
+                            .replace(/'/g, '"');
+
+                        try {
+                            details = JSON.parse(cleanedDetails);
+                        } catch (parseError) {
+                            // If JSON parsing fails, treat as comma-separated values
+                            details = detailsString.split(',').map(item => item.trim());
+                        }
                     } else {
+                        // Treat as comma-separated values
                         details = detailsString.split(',').map(item => item.trim());
+                    }
+
+                    // Ensure details is an array
+                    if (!Array.isArray(details)) {
+                        details = [details];
                     }
                 }
             } catch (err) {
-                errorLogs.push({ name, reason: `JSON parse error: ${err.message}` });
+                errorLogs.push({ name, reason: `Details parse error: ${err.message}` });
+                details = []; // Fallback to empty array
             }
 
             if (row.category) {
@@ -5532,7 +5554,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 if (existingCategory.length > 0) {
                     categoryId = existingCategory[0].id;
 
-                    // Update category specs if they're empty but we have specifications
                     if (specifications.length > 0) {
                         let currentSpecs = [];
                         try {
@@ -5541,7 +5562,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                             currentSpecs = [];
                         }
 
-                        // Merge specs if they're different
                         if (currentSpecs.length === 0 || JSON.stringify(currentSpecs) !== JSON.stringify(specifications)) {
                             await db.query(
                                 'UPDATE product_categories SET specs = ? WHERE id = ?',
@@ -5556,7 +5576,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                         if (parentCat.length > 0) parentId = parentCat[0].id;
                     }
 
-                    // Create new category with specifications
                     const [insertCategory] = await db.query(
                         'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
                         [row.category, JSON.stringify(specifications), parentId]
@@ -5583,18 +5602,24 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 }
             }
 
+            // Prepare the full description by combining short_description and description
+            const fullDescription = [
+                row.short_description || '',
+                row.description || ''
+            ].filter(Boolean).join('\n\n');
+
             productsToInsert.push([
                 sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
                 row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
                 row.max_purchase_quantity || 10, row.low_stock_warning || 5, row.unit || 'unit',
                 row.weight || 0, row.tags || '',
                 row.short_description || '',
-                row.description || '',
+                fullDescription, // Using combined description
                 localImageFilename,
                 localImagePaths.length ? JSON.stringify(localImagePaths) : '[]',
                 row.discount || 0,
                 JSON.stringify(specifications),
-                JSON.stringify(details),
+                JSON.stringify(details), // Properly formatted details
                 name
             ]);
 
