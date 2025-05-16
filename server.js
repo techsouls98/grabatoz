@@ -5429,6 +5429,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //         res.status(500).json({ error: 'Error processing Excel file' });
 //     }
 // });
+
 app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -5460,7 +5461,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                     stream.on('finish', resolve);
                     stream.on('error', reject);
                 });
-
                 return `Uploads/${fileName}`;
             } catch (err) {
                 errorLogs.push({ name: 'Image Download Failed', reason: err.message });
@@ -5502,41 +5502,53 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
             let specifications = [];
             let details = [];
 
-            // ✅ Parse specifications and details
+            // Process specifications and details first
             try {
                 if (row.specifications) {
-                    specifications = JSON.parse(String(row.specifications).replace(/'/g, '"'));
+                    // Clean and parse specifications
+                    const specsString = String(row.specifications).trim();
+                    if (specsString.startsWith('[') && specsString.endsWith(']')) {
+                        specifications = JSON.parse(specsString.replace(/<br\s*\/?>/g, '\n'));
+                    } else {
+                        specifications = specsString.split(',').map(item => item.trim());
+                    }
                 }
-            } catch (err) {
-                errorLogs.push({ name, reason: `JSON parse error in specifications: ${err.message}` });
-            }
 
-            try {
                 if (row.details) {
-                    details = JSON.parse(String(row.details).replace(/'/g, '"'));
+                    // Clean and parse details
+                    const detailsString = String(row.details).trim();
+                    if (detailsString.startsWith('[') && detailsString.endsWith(']')) {
+                        details = JSON.parse(detailsString.replace(/<br\s*\/?>/g, '\n'));
+                    } else {
+                        details = detailsString.split(',').map(item => item.trim());
+                    }
                 }
             } catch (err) {
-                errorLogs.push({ name, reason: `JSON parse error in details: ${err.message}` });
+                errorLogs.push({ name, reason: `JSON parse error: ${err.message}` });
             }
 
-            // ✅ Category insert/update with specs
             if (row.category) {
                 const [existingCategory] = await db.query('SELECT id, specs FROM product_categories WHERE name = ?', [row.category]);
-
                 if (existingCategory.length > 0) {
                     categoryId = existingCategory[0].id;
 
-                    try {
-                        const currentSpecs = JSON.parse(existingCategory[0].specs || '[]');
-                        const specsChanged = JSON.stringify([...new Set(currentSpecs)].sort()) !== JSON.stringify([...new Set(specifications)].sort());
-
-                        if (specsChanged && specifications.length > 0) {
-                            await db.query('UPDATE product_categories SET specs = ? WHERE id = ?', [JSON.stringify(specifications), categoryId]);
+                    // Update category specs if they're empty but we have specifications
+                    if (specifications.length > 0) {
+                        let currentSpecs = [];
+                        try {
+                            currentSpecs = existingCategory[0].specs ? JSON.parse(existingCategory[0].specs) : [];
+                        } catch (e) {
+                            currentSpecs = [];
                         }
-                    } catch (err) {
-                        errorLogs.push({ name: row.category, reason: `Failed to parse/update category specs: ${err.message}` });
-                    }
 
+                        // Merge specs if they're different
+                        if (currentSpecs.length === 0 || JSON.stringify(currentSpecs) !== JSON.stringify(specifications)) {
+                            await db.query(
+                                'UPDATE product_categories SET specs = ? WHERE id = ?',
+                                [JSON.stringify(specifications), categoryId]
+                            );
+                        }
+                    }
                 } else {
                     let parentId = null;
                     if (row.parent_category) {
@@ -5544,18 +5556,18 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                         if (parentCat.length > 0) parentId = parentCat[0].id;
                     }
 
+                    // Create new category with specifications
                     const [insertCategory] = await db.query(
                         'INSERT INTO product_categories (name, status, specs, parent_category) VALUES (?, "Active", ?, ?)',
                         [row.category, JSON.stringify(specifications), parentId]
                     );
-
                     categoryId = insertCategory.insertId;
                 }
             }
 
-            // ✅ Image download
             let localImageFilename = '';
             const localImagePaths = [];
+
             const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
 
             if (row.image_path) {
@@ -5571,7 +5583,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 }
             }
 
-            // ✅ Final product insert data
             productsToInsert.push([
                 sku, slug, categoryId, row.barcode || '', row.buying_price || 0, row.selling_price || 0,
                 row.offer_price || 0, row.tax || 'VAT-1', brandId, 'Active', 'Yes', 'Enable', 'Yes',
@@ -5616,7 +5627,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
         res.status(500).json({ error: 'Error processing Excel file' });
     }
 });
-
 // app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
 //     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
