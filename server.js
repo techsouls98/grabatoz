@@ -1744,7 +1744,7 @@ app.put('/api/onlineorders/:order_id/status', authenticate, async (req, res) => 
             params = [order_status, order_id];
         }
 
-        console.log("Running query:", query, "with params:", params); // DEBUG LOG
+        // console.log("Running query:", query, "with params:", params); // DEBUG LOG
 
         const [result] = await db.query(query, params);
 
