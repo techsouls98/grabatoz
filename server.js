@@ -4447,7 +4447,7 @@ app.delete('/api/product-categories/:id', authenticate, async (req, res) => {
     }
 });
 // GET API for fetching a single product brand by ID
-app.patch('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
+app.PATCH('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
     const { id } = req.params;
     const { name, status, description, categorySpecs, parent_category } = req.body;
     const imageFilename = req.file ? path.basename(req.file.path) : null;
