@@ -4447,39 +4447,128 @@ app.delete('/api/product-categories/:id', authenticate, async (req, res) => {
     }
 });
 // GET API for fetching a single product brand by ID
+// app.patch('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
+//     const { id } = req.params;
+//     const { name, status, description, categorySpecs, parent_category } = req.body;
+//     const imageFilename = req.file ? path.basename(req.file.path) : null;
+
+//     if (!name || !status) {
+//         if (req.file) fs.unlinkSync(req.file.path);
+//         return res.status(400).json({ message: 'Name and Status are required' });
+//     }
+
+//     try {
+//         // First get current image path to delete old image if needed
+//         const [current] = await db.query(
+//             'SELECT image_path FROM product_categories WHERE id = ?',
+//             [id]
+//         );
+
+//         const sql = `
+//             UPDATE product_categories
+//             SET name = ?, status = ?, description = ?, specs = ?, 
+//                 parent_category = ?, image_path = ?
+//             WHERE id = ?
+//         `;
+
+//         const newImagePath = imageFilename ? `uploads/${imageFilename}` : current[0]?.image_path;
+
+//         const [result] = await db.query(sql, [
+//             name,
+//             status,
+//             description || 'No description',
+//             JSON.stringify(categorySpecs || []),
+//             parent_category ? parseInt(parent_category) : null,
+//             newImagePath,
+//             id
+//         ]);
+
+//         if (result.affectedRows === 0) {
+//             if (req.file) fs.unlinkSync(req.file.path);
+//             return res.status(404).json({ message: 'Product category not found' });
+//         }
+
+//         // Delete old image if a new one was uploaded
+//         if (req.file && current[0]?.image_path) {
+//             try {
+//                 fs.unlinkSync(path.join(__dirname, '..', current[0].image_path));
+//             } catch (err) {
+//                 console.error('Error deleting old image:', err.message);
+//             }
+//         }
+
+//         res.status(200).json({
+//             message: 'Product category updated successfully',
+//             id,
+//             name,
+//             status,
+//             description: description || 'No description',
+//             specs: categorySpecs || [],
+//             parent_category: parent_category || null,
+//             image_path: imageFilename ? `/uploads/${imageFilename}` : current[0]?.image_path
+//         });
+//     } catch (error) {
+//         if (req.file) fs.unlinkSync(req.file.path);
+//         console.error('Error updating product category:', error.message);
+//         res.status(500).json({ message: 'Error updating product category' });
+//     }
+// });
 app.patch('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
     const { id } = req.params;
     const { name, status, description, categorySpecs, parent_category } = req.body;
     const imageFilename = req.file ? path.basename(req.file.path) : null;
 
-    if (!name || !status) {
-        if (req.file) fs.unlinkSync(req.file.path);
-        return res.status(400).json({ message: 'Name and Status are required' });
-    }
-
     try {
-        // First get current image path to delete old image if needed
-        const [current] = await db.query(
-            'SELECT image_path FROM product_categories WHERE id = ?',
+        // Fetch current row from DB
+        const [currentRows] = await db.query(
+            'SELECT * FROM product_categories WHERE id = ?',
             [id]
         );
+        const current = currentRows[0];
 
+        if (!current) {
+            if (req.file) fs.unlinkSync(req.file.path);
+            return res.status(404).json({ message: 'Product category not found' });
+        }
+
+        // Validate required fields only if provided, otherwise fallback to current
+        if (name !== undefined && !name) {
+            if (req.file) fs.unlinkSync(req.file.path);
+            return res.status(400).json({ message: 'Name cannot be empty' });
+        }
+        if (status !== undefined && !status) {
+            if (req.file) fs.unlinkSync(req.file.path);
+            return res.status(400).json({ message: 'Status cannot be empty' });
+        }
+
+        // Determine final values: use new if provided, else keep existing
+        const finalName = name !== undefined ? name : current.name;
+        const finalStatus = status !== undefined ? status : current.status;
+        const finalDescription = description !== undefined ? description : current.description;
+        const finalSpecs = categorySpecs !== undefined
+            ? JSON.stringify(categorySpecs)
+            : current.specs;
+        const finalParentCategory = parent_category !== undefined
+            ? (parent_category ? parseInt(parent_category) : null)
+            : current.parent_category;
+        const finalImagePath = imageFilename
+            ? `uploads/${imageFilename}`
+            : current.image_path;
+
+        // Run update query
         const sql = `
             UPDATE product_categories
-            SET name = ?, status = ?, description = ?, specs = ?, 
-                parent_category = ?, image_path = ?
+            SET name = ?, status = ?, description = ?, specs = ?, parent_category = ?, image_path = ?
             WHERE id = ?
         `;
 
-        const newImagePath = imageFilename ? `uploads/${imageFilename}` : current[0]?.image_path;
-
         const [result] = await db.query(sql, [
-            name,
-            status,
-            description || 'No description',
-            JSON.stringify(categorySpecs || []),
-            parent_category ? parseInt(parent_category) : null,
-            newImagePath,
+            finalName,
+            finalStatus,
+            finalDescription || 'No description',
+            finalSpecs,
+            finalParentCategory,
+            finalImagePath,
             id
         ]);
 
@@ -4488,10 +4577,10 @@ app.patch('/api/product-categories/:id', authenticate, upload.single('image'), a
             return res.status(404).json({ message: 'Product category not found' });
         }
 
-        // Delete old image if a new one was uploaded
-        if (req.file && current[0]?.image_path) {
+        // Delete old image if a new one was uploaded and old exists
+        if (req.file && current.image_path && current.image_path !== finalImagePath) {
             try {
-                fs.unlinkSync(path.join(__dirname, '..', current[0].image_path));
+                fs.unlinkSync(path.join(__dirname, '..', current.image_path));
             } catch (err) {
                 console.error('Error deleting old image:', err.message);
             }
@@ -4500,19 +4589,21 @@ app.patch('/api/product-categories/:id', authenticate, upload.single('image'), a
         res.status(200).json({
             message: 'Product category updated successfully',
             id,
-            name,
-            status,
-            description: description || 'No description',
-            specs: categorySpecs || [],
-            parent_category: parent_category || null,
-            image_path: imageFilename ? `/uploads/${imageFilename}` : current[0]?.image_path
+            name: finalName,
+            status: finalStatus,
+            description: finalDescription || 'No description',
+            specs: finalSpecs ? JSON.parse(finalSpecs) : [],
+            parent_category: finalParentCategory,
+            image_path: finalImagePath.startsWith('uploads/') ? `/${finalImagePath}` : finalImagePath
         });
+
     } catch (error) {
         if (req.file) fs.unlinkSync(req.file.path);
         console.error('Error updating product category:', error.message);
         res.status(500).json({ message: 'Error updating product category' });
     }
 });
+
 
 app.get('/api/product-categories/:id', authenticate, async (req, res) => {
     const { id } = req.params;
