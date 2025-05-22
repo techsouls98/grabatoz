@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
     origin: '*', // Or specify allowed origin(s)
     // origin: 'https://admin-graba2z.netlify.app',
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.options('*', cors()); // Handle preflight
@@ -4447,7 +4447,7 @@ app.delete('/api/product-categories/:id', authenticate, async (req, res) => {
     }
 });
 // GET API for fetching a single product brand by ID
-app.PATCH('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
+app.put('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
     const { id } = req.params;
     const { name, status, description, categorySpecs, parent_category } = req.body;
     const imageFilename = req.file ? path.basename(req.file.path) : null;
