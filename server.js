@@ -1563,8 +1563,6 @@ app.put('/api/damages/:id', authenticate, upload.single('image'), async (req, re
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Damage record not found' });
         }
-
-        // Send response with updated damage record details
         res.status(200).json({
             id,
             date,
@@ -1758,7 +1756,6 @@ app.put('/api/onlineorders/:order_id/status', authenticate, async (req, res) => 
         res.status(500).json({ message: "Failed to update status.", error: error.message });
     }
 });
-
 
 // by received orders status apis
 app.get('/api/onlineorders/received', authenticate, async (req, res) => {
@@ -4450,7 +4447,7 @@ app.delete('/api/product-categories/:id', authenticate, async (req, res) => {
     }
 });
 // GET API for fetching a single product brand by ID
-app.put('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
+app.patch('/api/product-categories/:id', authenticate, upload.single('image'), async (req, res) => {
     const { id } = req.params;
     const { name, status, description, categorySpecs, parent_category } = req.body;
     const imageFilename = req.file ? path.basename(req.file.path) : null;
