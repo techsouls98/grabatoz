@@ -1683,44 +1683,45 @@ app.get('/api/onlineorders', authenticate, async (req, res) => {
     }
 });
 
-// Public route: Get order by ID for tracking (no authentication required)
-app.get('/api/onlineordertrack/:orderId', async (req, res) => {
-  const orderId = req.params.orderId;
+// Public route: Search orders by order ID or customer name (no auth)
+app.get('/api/onlineordertrack/search', async (req, res) => {
+  const query = req.query.query;
+  if (!query) return res.status(400).json({ message: 'Query param is required' });
 
   try {
-    const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_id = ?`, [orderId]);
+    // Use SQL LIKE for partial matching customer name, exact match for order_id
+    const sql = `
+      SELECT * FROM onlineorders
+      WHERE order_id = ? OR customer_name LIKE ?
+      LIMIT 20
+    `;
+    const likeQuery = `%${query}%`;
+    const [orders] = await db.query(sql, [query, likeQuery]);
 
-    if (!orders.length) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
+    const formattedOrders = orders.map(order => {
+      try {
+        const parsed = JSON.parse(order.shipping_address);
+        order.shipping_address = [
+          parsed.address,
+          parsed.city,
+          parsed.state,
+          parsed.country,
+          parsed.zip || parsed.zip_code || ""
+        ].filter(Boolean).join(', ');
+      } catch {
+        order.shipping_address = 'Invalid Address Data';
+      }
+      order.display_id = order.customer_id || order.guest_id || 'N/A';
+      return order;
+    });
 
-    const order = orders[0];
-
-    try {
-      const parsed = JSON.parse(order.shipping_address);
-
-      order.shipping_address = [
-        parsed.address,
-        parsed.city,
-        parsed.state,
-        parsed.country,
-        parsed.zip || parsed.zip_code || ""
-      ].filter(Boolean).join(', ');
-
-    } catch (err) {
-      console.error('❌ Failed to parse address for order:', order.order_id, err);
-      order.shipping_address = 'Invalid Address Data';
-    }
-
-    order.display_id = order.customer_id || order.guest_id || 'N/A';
-
-    res.status(200).json(order);
-
-  } catch (error) {
-    console.error('❌ Failed to fetch order:', error);
-    res.status(500).json({ message: 'Failed to fetch order', error: error.message });
+    res.json(formattedOrders);
+  } catch (err) {
+    console.error('Search error:', err);
+    res.status(500).json({ message: 'Failed to search orders' });
   }
 });
+
 
 // Update order status API
 // app.put('/api/onlineorders/:order_id/status', authenticate, async (req, res) => {
