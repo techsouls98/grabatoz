@@ -1720,7 +1720,22 @@ app.get('/api/onlineordertrack/:orderId', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch order', error: error.message });
   }
 });
+app.put('/api/onlineorders/:id/payment-type', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { payment_type } = req.body;
 
+  if (!["COD", "Card", "Bank Transfer"].includes(payment_type)) {
+    return res.status(400).json({ message: "Invalid payment type" });
+  }
+
+  try {
+    await db.query("UPDATE online_orders SET payment_type = ? WHERE order_id = ?", [payment_type, id]);
+    res.json({ message: "Payment type updated successfully" });
+  } catch (err) {
+    console.error("DB Error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 // Update order status API
 // app.put('/api/onlineorders/:order_id/status', authenticate, async (req, res) => {
 //     const { order_id } = req.params;
