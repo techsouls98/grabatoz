@@ -1721,7 +1721,7 @@ app.get('/api/onlineordertrack/:orderId', async (req, res) => {
     }
 });
 // PUT /api/onlineorders/:id/payment-type
-app.put('/onlineorders/:id/payment-type', verifyToken, async (req, res) => {
+app.put('/api/onlineorders/:id/payment-type', verifyToken, async (req, res) => {
     const { id } = req.params;
     const { payment_type } = req.body;
 
