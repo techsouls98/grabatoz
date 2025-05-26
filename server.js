@@ -1684,41 +1684,58 @@ app.get('/api/onlineorders', authenticate, async (req, res) => {
 });
 // Public route: Get order by ID for tracking (no authentication required)
 app.get('/api/onlineordertrack/:orderId', async (req, res) => {
-  const orderId = req.params.orderId;
-
-  try {
-    const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_id = ?`, [orderId]);
-
-    if (!orders.length) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    const order = orders[0];
+    const orderId = req.params.orderId;
 
     try {
-      const parsed = JSON.parse(order.shipping_address);
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_id = ?`, [orderId]);
 
-      order.shipping_address = [
-        parsed.address,
-        parsed.city,
-        parsed.state,
-        parsed.country,
-        parsed.zip || parsed.zip_code || ""
-      ].filter(Boolean).join(', ');
+        if (!orders.length) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
 
-    } catch (err) {
-      console.error('❌ Failed to parse address for order:', order.order_id, err);
-      order.shipping_address = 'Invalid Address Data';
+        const order = orders[0];
+
+        try {
+            const parsed = JSON.parse(order.shipping_address);
+
+            order.shipping_address = [
+                parsed.address,
+                parsed.city,
+                parsed.state,
+                parsed.country,
+                parsed.zip || parsed.zip_code || ""
+            ].filter(Boolean).join(', ');
+
+        } catch (err) {
+            console.error('❌ Failed to parse address for order:', order.order_id, err);
+            order.shipping_address = 'Invalid Address Data';
+        }
+
+        order.display_id = order.customer_id || order.guest_id || 'N/A';
+
+        res.status(200).json(order);
+
+    } catch (error) {
+        console.error('❌ Failed to fetch order:', error);
+        res.status(500).json({ message: 'Failed to fetch order', error: error.message });
+    }
+});
+// PUT /api/onlineorders/:id/payment-type
+router.put('/onlineorders/:id/payment-type', verifyToken, async (req, res) => {
+    const { id } = req.params;
+    const { payment_type } = req.body;
+
+    if (!["COD", "Card", "Bank Transfer"].includes(payment_type)) {
+        return res.status(400).json({ message: "Invalid payment type" });
     }
 
-    order.display_id = order.customer_id || order.guest_id || 'N/A';
-
-    res.status(200).json(order);
-
-  } catch (error) {
-    console.error('❌ Failed to fetch order:', error);
-    res.status(500).json({ message: 'Failed to fetch order', error: error.message });
-  }
+    try {
+        await db.query("UPDATE online_orders SET payment_type = ? WHERE order_id = ?", [payment_type, id]);
+        res.json({ message: "Payment type updated successfully" });
+    } catch (err) {
+        console.error("DB Error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
 });
 
 // Update order status API
