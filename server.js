@@ -1215,6 +1215,137 @@ app.get('/api/list-sell-return', authenticate, async (req, res) => {
 app.use('/Uploads', express.static(path.join(__dirname, 'Uploads')));
 
 // // console.log('Serving static files from:', path.join(__dirname, 'uploads')); 
+// app.post('/api/coupons', authenticate, upload.single('image'), async (req, res) => {
+//     const {
+//         name,
+//         code,
+//         discount,
+//         discount_type,
+//         start_date,
+//         end_date,
+//         min_order_amount,
+//         max_discount,
+//         limit_per_user,
+//         description = 'NA'
+//     } = req.body;
+
+//     // Validate required fields
+//     if (!name || !code || !discount || !discount_type || !start_date || !end_date || !min_order_amount || !max_discount || !limit_per_user) {
+//         return res.status(400).json({ message: 'All fields except description are required' });
+//     }
+
+//     // Get the file path from the uploaded file
+//     const imagePath = req.file ? req.file.path : null;
+
+//     // const imagePath = req.file ? `${API_ADMINGRAB_URL}/uploads/${req.file.filename}` : null;
+
+//     try {
+//         // SQL query to insert new coupon with image path
+//         const sql = `
+//             INSERT INTO coupons (name, code, discount, discount_type, start_date, end_date, min_order_amount, max_discount, limit_per_user, image_path, description)
+//             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//         `;
+//         const [result] = await db.query(sql, [name, code, discount, discount_type, start_date, end_date, min_order_amount, max_discount, limit_per_user, imagePath, description]);
+
+//         // Send response with new coupon details
+//         res.status(201).json({
+//             id: result.insertId,
+//             name,
+//             code,
+//             discount,
+//             discount_type,
+//             start_date,
+//             end_date,
+//             min_order_amount,
+//             max_discount,
+//             limit_per_user,
+//             image: imagePath,
+//             description
+//         });
+//     } catch (err) {
+//         console.error('Error inserting coupon:', err.message);
+//         res.status(500).json({ message: 'Error saving coupon' });
+//     }
+// });
+
+// app.put('/api/coupons/:id', authenticate, upload.single('image'), async (req, res) => {
+//     const { id } = req.params;
+//     const {
+//         name,
+//         code,
+//         discount,
+//         discount_type,
+//         start_date,
+//         end_date,
+//         min_order_amount,
+//         max_discount,
+//         limit_per_user,
+//         description = 'NA'
+//     } = req.body;
+
+//     // Get the new image file path if provided
+//     const newImagePath = req.file ? req.file.path : null;
+
+//     try {
+//         // Check if the coupon exists in the database
+//         const checkSql = 'SELECT * FROM coupons WHERE id = ?';
+//         const [checkResult] = await db.query(checkSql, [id]);
+
+//         if (checkResult.length === 0) {
+//             return res.status(404).json({ message: 'Coupon not found' });
+//         }
+
+//         const existingCoupon = checkResult[0];
+//         const imagePath = newImagePath || existingCoupon.image_path;
+
+//         // SQL query to update the coupon details
+//         const updateSql = `
+//             UPDATE coupons 
+//             SET name = ?, code = ?, discount = ?, discount_type = ?, start_date = ?, end_date = ?, 
+//                 min_order_amount = ?, max_discount = ?, limit_per_user = ?, image_path = ?, description = ?
+//             WHERE id = ?
+//         `;
+
+//         await db.query(updateSql, [
+//             name || existingCoupon.name,
+//             code || existingCoupon.code,
+//             discount || existingCoupon.discount,
+//             discount_type || existingCoupon.discount_type,
+//             start_date || existingCoupon.start_date,
+//             end_date || existingCoupon.end_date,
+//             min_order_amount || existingCoupon.min_order_amount,
+//             max_discount || existingCoupon.max_discount,
+//             limit_per_user || existingCoupon.limit_per_user,
+//             imagePath,
+//             description || existingCoupon.description,
+//             id
+//         ]);
+
+//         // Send response with updated coupon details
+//         res.status(200).json({
+//             id,
+//             name,
+//             code,
+//             discount,
+//             discount_type,
+//             start_date,
+//             end_date,
+//             min_order_amount,
+//             max_discount,
+//             limit_per_user,
+//             image: imagePath,
+//             description
+//         });
+//     } catch (err) {
+//         console.error('Error updating coupon:', err.message);
+//         res.status(500).json({ message: 'Error updating coupon details' });
+//     }
+// });
+function formatDateTime(input) {
+    const date = new Date(input);
+    return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 app.post('/api/coupons', authenticate, upload.single('image'), async (req, res) => {
     const {
         name,
@@ -1229,33 +1360,41 @@ app.post('/api/coupons', authenticate, upload.single('image'), async (req, res) 
         description = 'NA'
     } = req.body;
 
-    // Validate required fields
     if (!name || !code || !discount || !discount_type || !start_date || !end_date || !min_order_amount || !max_discount || !limit_per_user) {
         return res.status(400).json({ message: 'All fields except description are required' });
     }
 
-    // Get the file path from the uploaded file
     const imagePath = req.file ? req.file.path : null;
 
-    // const imagePath = req.file ? `${API_ADMINGRAB_URL}/uploads/${req.file.filename}` : null;
-
     try {
-        // SQL query to insert new coupon with image path
         const sql = `
-            INSERT INTO coupons (name, code, discount, discount_type, start_date, end_date, min_order_amount, max_discount, limit_per_user, image_path, description)
+            INSERT INTO coupons 
+            (name, code, discount, discount_type, start_date, end_date, min_order_amount, max_discount, limit_per_user, image_path, description)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        const [result] = await db.query(sql, [name, code, discount, discount_type, start_date, end_date, min_order_amount, max_discount, limit_per_user, imagePath, description]);
 
-        // Send response with new coupon details
+        const [result] = await db.query(sql, [
+            name,
+            code,
+            discount,
+            discount_type,
+            formatDateTime(start_date),
+            formatDateTime(end_date),
+            min_order_amount,
+            max_discount,
+            limit_per_user,
+            imagePath,
+            description
+        ]);
+
         res.status(201).json({
             id: result.insertId,
             name,
             code,
             discount,
             discount_type,
-            start_date,
-            end_date,
+            start_date: formatDateTime(start_date),
+            end_date: formatDateTime(end_date),
             min_order_amount,
             max_discount,
             limit_per_user,
@@ -1267,7 +1406,6 @@ app.post('/api/coupons', authenticate, upload.single('image'), async (req, res) 
         res.status(500).json({ message: 'Error saving coupon' });
     }
 });
-
 app.put('/api/coupons/:id', authenticate, upload.single('image'), async (req, res) => {
     const { id } = req.params;
     const {
@@ -1283,22 +1421,17 @@ app.put('/api/coupons/:id', authenticate, upload.single('image'), async (req, re
         description = 'NA'
     } = req.body;
 
-    // Get the new image file path if provided
     const newImagePath = req.file ? req.file.path : null;
 
     try {
-        // Check if the coupon exists in the database
-        const checkSql = 'SELECT * FROM coupons WHERE id = ?';
-        const [checkResult] = await db.query(checkSql, [id]);
-
+        const [checkResult] = await db.query('SELECT * FROM coupons WHERE id = ?', [id]);
         if (checkResult.length === 0) {
             return res.status(404).json({ message: 'Coupon not found' });
         }
 
-        const existingCoupon = checkResult[0];
-        const imagePath = newImagePath || existingCoupon.image_path;
+        const existing = checkResult[0];
+        const imagePath = newImagePath || existing.image_path;
 
-        // SQL query to update the coupon details
         const updateSql = `
             UPDATE coupons 
             SET name = ?, code = ?, discount = ?, discount_type = ?, start_date = ?, end_date = ?, 
@@ -1307,34 +1440,33 @@ app.put('/api/coupons/:id', authenticate, upload.single('image'), async (req, re
         `;
 
         await db.query(updateSql, [
-            name || existingCoupon.name,
-            code || existingCoupon.code,
-            discount || existingCoupon.discount,
-            discount_type || existingCoupon.discount_type,
-            start_date || existingCoupon.start_date,
-            end_date || existingCoupon.end_date,
-            min_order_amount || existingCoupon.min_order_amount,
-            max_discount || existingCoupon.max_discount,
-            limit_per_user || existingCoupon.limit_per_user,
+            name || existing.name,
+            code || existing.code,
+            discount || existing.discount,
+            discount_type || existing.discount_type,
+            formatDateTime(start_date || existing.start_date),
+            formatDateTime(end_date || existing.end_date),
+            min_order_amount || existing.min_order_amount,
+            max_discount || existing.max_discount,
+            limit_per_user || existing.limit_per_user,
             imagePath,
-            description || existingCoupon.description,
+            description || existing.description,
             id
         ]);
 
-        // Send response with updated coupon details
         res.status(200).json({
             id,
-            name,
-            code,
-            discount,
-            discount_type,
-            start_date,
-            end_date,
-            min_order_amount,
-            max_discount,
-            limit_per_user,
+            name: name || existing.name,
+            code: code || existing.code,
+            discount: discount || existing.discount,
+            discount_type: discount_type || existing.discount_type,
+            start_date: formatDateTime(start_date || existing.start_date),
+            end_date: formatDateTime(end_date || existing.end_date),
+            min_order_amount: min_order_amount || existing.min_order_amount,
+            max_discount: max_discount || existing.max_discount,
+            limit_per_user: limit_per_user || existing.limit_per_user,
             image: imagePath,
-            description
+            description: description || existing.description
         });
     } catch (err) {
         console.error('Error updating coupon:', err.message);
@@ -1343,8 +1475,9 @@ app.put('/api/coupons/:id', authenticate, upload.single('image'), async (req, re
 });
 
 
+
 // coupons
-app.get('/api/coupons', async (req, res) => {
+app.get('/api/coupons', authenticate, async (req, res) => {
     try {
         // SQL query to select only the required fields
         const sql = `
@@ -1684,41 +1817,41 @@ app.get('/api/onlineorders', authenticate, async (req, res) => {
 });
 // Public route: Get order by ID for tracking (no authentication required)
 app.get('/api/onlineordertrack/:orderId', async (req, res) => {
-  const orderId = req.params.orderId;
-
-  try {
-    const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_id = ?`, [orderId]);
-
-    if (!orders.length) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    const order = orders[0];
+    const orderId = req.params.orderId;
 
     try {
-      const parsed = JSON.parse(order.shipping_address);
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_id = ?`, [orderId]);
 
-      order.shipping_address = [
-        parsed.address,
-        parsed.city,
-        parsed.state,
-        parsed.country,
-        parsed.zip || parsed.zip_code || ""
-      ].filter(Boolean).join(', ');
+        if (!orders.length) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
 
-    } catch (err) {
-      console.error('❌ Failed to parse address for order:', order.order_id, err);
-      order.shipping_address = 'Invalid Address Data';
+        const order = orders[0];
+
+        try {
+            const parsed = JSON.parse(order.shipping_address);
+
+            order.shipping_address = [
+                parsed.address,
+                parsed.city,
+                parsed.state,
+                parsed.country,
+                parsed.zip || parsed.zip_code || ""
+            ].filter(Boolean).join(', ');
+
+        } catch (err) {
+            console.error('❌ Failed to parse address for order:', order.order_id, err);
+            order.shipping_address = 'Invalid Address Data';
+        }
+
+        order.display_id = order.customer_id || order.guest_id || 'N/A';
+
+        res.status(200).json(order);
+
+    } catch (error) {
+        console.error('❌ Failed to fetch order:', error);
+        res.status(500).json({ message: 'Failed to fetch order', error: error.message });
     }
-
-    order.display_id = order.customer_id || order.guest_id || 'N/A';
-
-    res.status(200).json(order);
-
-  } catch (error) {
-    console.error('❌ Failed to fetch order:', error);
-    res.status(500).json({ message: 'Failed to fetch order', error: error.message });
-  }
 });
 
 // Update order status API
