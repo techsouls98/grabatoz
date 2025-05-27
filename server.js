@@ -1361,7 +1361,7 @@ app.get('/api/coupons', authenticate, async (req, res) => {
     }
 });
 
-app.get('/api/coupons/:id', authenticate, async (req, res) => {
+app.get('/api/coupons/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
