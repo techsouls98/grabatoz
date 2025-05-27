@@ -1344,7 +1344,7 @@ app.put('/api/coupons/:id', authenticate, upload.single('image'), async (req, re
 
 
 // coupons
-app.get('/api/coupons', authenticate, async (req, res) => {
+app.get('/api/coupons', async (req, res) => {
     try {
         // SQL query to select only the required fields
         const sql = `
