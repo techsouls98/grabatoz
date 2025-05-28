@@ -1425,7 +1425,7 @@ app.post('/api/online-coupons', (req, res) => {
 });
 
 // GET - All Coupons
-app.get('/api/online-coupons', (req, res) => {
+app.get('/api/online-coupons',authenticate, (req, res) => {
     db.query('SELECT * FROM online_coupons', (err, results) => {
         if (err) return res.status(500).json({ error: err });
         res.json(results);
