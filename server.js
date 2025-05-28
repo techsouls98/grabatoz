@@ -1414,51 +1414,186 @@ app.delete('/api/coupons/:id', authenticate, async (req, res) => {
 // POST - Create Coupon
 app.post('/api/online-coupons', (req, res) => {
     const { name, code, price } = req.body;
+
+    // Input validation
+    if (!name || !code || price === undefined) {
+        return res.status(400).json({
+            error: 'Missing required fields: name, code, and price are required'
+        });
+    }
+
+    if (typeof price !== 'number' || price < 0) {
+        return res.status(400).json({
+            error: 'Price must be a positive number'
+        });
+    }
+
     db.query(
         'INSERT INTO online_coupons (name, code, price) VALUES (?, ?, ?)',
         [name, code, price],
         (err, result) => {
-            if (err) return res.status(500).json({ error: err });
-            res.status(201).json({ message: 'Coupon created', id: result.insertId });
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.status(409).json({
+                        error: 'Coupon code already exists'
+                    });
+                }
+                console.error('Database error:', err);
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+
+            res.status(201).json({
+                success: true,
+                message: 'Coupon created successfully',
+                data: {
+                    id: result.insertId,
+                    name,
+                    code,
+                    price
+                }
+            });
         }
     );
 });
 
 // GET - All Coupons
-app.get('/api/online-coupons',authenticate, (req, res) => {
+app.get('/api/online-coupons', (req, res) => {
     db.query('SELECT * FROM online_coupons', (err, results) => {
-        if (err) return res.status(500).json({ error: err });
-        res.json(results);
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                error: 'Internal server error'
+            });
+        }
+
+        res.json({
+            success: true,
+            count: results.length,
+            data: results
+        });
     });
 });
 
 // GET - Coupon by ID
 app.get('/api/online-coupons/:id', (req, res) => {
-    db.query('SELECT * FROM online_coupons WHERE id = ?', [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: err });
-        if (results.length === 0) return res.status(404).json({ message: 'Coupon not found' });
-        res.json(results[0]);
+    const couponId = parseInt(req.params.id);
+
+    if (isNaN(couponId)) {
+        return res.status(400).json({
+            error: 'Invalid coupon ID format'
+        });
+    }
+
+    db.query('SELECT * FROM online_coupons WHERE id = ?', [couponId], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                error: 'Internal server error'
+            });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                error: 'Coupon not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: results[0]
+        });
     });
 });
 
 // PUT - Update Coupon
 app.put('/api/online-coupons/:id', (req, res) => {
+    const couponId = parseInt(req.params.id);
     const { name, code, price } = req.body;
+
+    if (isNaN(couponId)) {
+        return res.status(400).json({
+            error: 'Invalid coupon ID format'
+        });
+    }
+
+    if (!name || !code || price === undefined) {
+        return res.status(400).json({
+            error: 'Missing required fields: name, code, and price are required'
+        });
+    }
+
+    if (typeof price !== 'number' || price < 0) {
+        return res.status(400).json({
+            error: 'Price must be a positive number'
+        });
+    }
+
     db.query(
         'UPDATE online_coupons SET name = ?, code = ?, price = ? WHERE id = ?',
-        [name, code, price, req.params.id],
-        (err) => {
-            if (err) return res.status(500).json({ error: err });
-            res.json({ message: 'Coupon updated' });
+        [name, code, price, couponId],
+        (err, result) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.status(409).json({
+                        error: 'Coupon code already exists'
+                    });
+                }
+                console.error('Database error:', err);
+                return res.status(500).json({
+                    error: 'Internal server error'
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({
+                    error: 'Coupon not found'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Coupon updated successfully',
+                data: {
+                    id: couponId,
+                    name,
+                    code,
+                    price
+                }
+            });
         }
     );
 });
 
 // DELETE - Delete Coupon
 app.delete('/api/online-coupons/:id', (req, res) => {
-    db.query('DELETE FROM online_coupons WHERE id = ?', [req.params.id], (err) => {
-        if (err) return res.status(500).json({ error: err });
-        res.json({ message: 'Coupon deleted' });
+    const couponId = parseInt(req.params.id);
+
+    if (isNaN(couponId)) {
+        return res.status(400).json({
+            error: 'Invalid coupon ID format'
+        });
+    }
+
+    db.query('DELETE FROM online_coupons WHERE id = ?', [couponId], (err, result) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({
+                error: 'Internal server error'
+            });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Coupon not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Coupon deleted successfully'
+        });
     });
 });
 app.get('/api/coupons/exportXLS', authenticate, async (req, res) => {
