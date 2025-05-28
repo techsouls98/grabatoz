@@ -1411,19 +1411,21 @@ app.delete('/api/coupons/:id', authenticate, async (req, res) => {
     }
 });
 // online coupons 
-// POST - Create Coupon
-app.post('/api/online-coupons', authenticate,(req, res) => {
+// POST - Create Coupon (Fixed Version)
+app.post('/api/online-coupons', (req, res) => {
     const { name, code, price } = req.body;
 
     // Input validation
     if (!name || !code || price === undefined) {
         return res.status(400).json({
+            success: false,
             error: 'Missing required fields: name, code, and price are required'
         });
     }
 
     if (typeof price !== 'number' || price < 0) {
         return res.status(400).json({
+            success: false,
             error: 'Price must be a positive number'
         });
     }
@@ -1433,18 +1435,21 @@ app.post('/api/online-coupons', authenticate,(req, res) => {
         [name, code, price],
         (err, result) => {
             if (err) {
+                console.error('Database error:', err);
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.status(409).json({
+                        success: false,
                         error: 'Coupon code already exists'
                     });
                 }
-                console.error('Database error:', err);
                 return res.status(500).json({
+                    success: false,
                     error: 'Internal server error'
                 });
             }
 
-            res.status(201).json({
+            // Make sure to send the response
+            return res.status(201).json({
                 success: true,
                 message: 'Coupon created successfully',
                 data: {
@@ -1458,17 +1463,19 @@ app.post('/api/online-coupons', authenticate,(req, res) => {
     );
 });
 
-// GET - All Coupons
+// GET - All Coupons (Fixed Version)
 app.get('/api/online-coupons', (req, res) => {
     db.query('SELECT * FROM online_coupons', (err, results) => {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).json({
+                success: false,
                 error: 'Internal server error'
             });
         }
 
-        res.json({
+        // Make sure to send the response
+        return res.json({
             success: true,
             count: results.length,
             data: results
@@ -1476,12 +1483,13 @@ app.get('/api/online-coupons', (req, res) => {
     });
 });
 
-// GET - Coupon by ID
+// GET - Coupon by ID (Fixed Version)
 app.get('/api/online-coupons/:id', (req, res) => {
     const couponId = parseInt(req.params.id);
 
     if (isNaN(couponId)) {
         return res.status(400).json({
+            success: false,
             error: 'Invalid coupon ID format'
         });
     }
@@ -1490,17 +1498,20 @@ app.get('/api/online-coupons/:id', (req, res) => {
         if (err) {
             console.error('Database error:', err);
             return res.status(500).json({
+                success: false,
                 error: 'Internal server error'
             });
         }
 
         if (results.length === 0) {
             return res.status(404).json({
+                success: false,
                 error: 'Coupon not found'
             });
         }
 
-        res.json({
+        // Make sure to send the response
+        return res.json({
             success: true,
             data: results[0]
         });
