@@ -1412,7 +1412,7 @@ app.delete('/api/coupons/:id', authenticate, async (req, res) => {
 });
 // online coupons 
 // POST - Create Coupon
-app.post('/api/online-coupons', (req, res) => {
+app.post('/api/online-coupons', authenticate,(req, res) => {
     const { name, code, price } = req.body;
 
     // Input validation
