@@ -1410,7 +1410,57 @@ app.delete('/api/coupons/:id', authenticate, async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+// online coupons 
+// POST - Create Coupon
+app.post('/api/online-coupons', (req, res) => {
+    const { name, code, price } = req.body;
+    db.query(
+        'INSERT INTO online_coupons (name, code, price) VALUES (?, ?, ?)',
+        [name, code, price],
+        (err, result) => {
+            if (err) return res.status(500).json({ error: err });
+            res.status(201).json({ message: 'Coupon created', id: result.insertId });
+        }
+    );
+});
 
+// GET - All Coupons
+app.get('/api/online-coupons', (req, res) => {
+    db.query('SELECT * FROM online_coupons', (err, results) => {
+        if (err) return res.status(500).json({ error: err });
+        res.json(results);
+    });
+});
+
+// GET - Coupon by ID
+app.get('/api/online-coupons/:id', (req, res) => {
+    db.query('SELECT * FROM online_coupons WHERE id = ?', [req.params.id], (err, results) => {
+        if (err) return res.status(500).json({ error: err });
+        if (results.length === 0) return res.status(404).json({ message: 'Coupon not found' });
+        res.json(results[0]);
+    });
+});
+
+// PUT - Update Coupon
+app.put('/api/online-coupons/:id', (req, res) => {
+    const { name, code, price } = req.body;
+    db.query(
+        'UPDATE online_coupons SET name = ?, code = ?, price = ? WHERE id = ?',
+        [name, code, price, req.params.id],
+        (err) => {
+            if (err) return res.status(500).json({ error: err });
+            res.json({ message: 'Coupon updated' });
+        }
+    );
+});
+
+// DELETE - Delete Coupon
+app.delete('/api/online-coupons/:id', (req, res) => {
+    db.query('DELETE FROM online_coupons WHERE id = ?', [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err });
+        res.json({ message: 'Coupon deleted' });
+    });
+});
 app.get('/api/coupons/exportXLS', authenticate, async (req, res) => {
     try {
         // Fetch data from the 'coupons' table
