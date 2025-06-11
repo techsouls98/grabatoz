@@ -2678,7 +2678,137 @@ app.get('/api/products/:id', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
-app.put('/api/products/:id', authenticate, upload.single('image'), async (req, res) => {
+// app.put('/api/products/:id', authenticate, upload.single('image'), async (req, res) => {
+//     const { id } = req.params;
+//     const {
+//         name, slug, sku, category, barcode, buying_price, selling_price, tax, brand, status,
+//         can_purchasable, show_stock_out, refundable, max_purchase_quantity,
+//         low_stock_warning, unit, weight, tags, short_description, description
+//     } = req.body;
+
+//     // Validate required fields
+//     if (!name || !sku || !buying_price || !selling_price || !category || !brand) {
+//         return res.status(400).json({
+//             message: 'Name, SKU, Buying Price, Selling Price, Category, and Brand are required fields'
+//         });
+//     }
+
+//     try {
+//         // Convert category and brand to integers to prevent injection
+//         const categoryId = parseInt(category, 10);
+//         const brandId = parseInt(brand, 10);
+
+//         if (isNaN(categoryId) || isNaN(brandId)) {
+//             return res.status(400).json({ message: 'Category and Brand must be valid IDs' });
+//         }
+
+//         // Validate category exists
+//         const [categoryCheck] = await db.query(`SELECT id FROM product_categories WHERE id = ?`, [categoryId]);
+//         if (categoryCheck.length === 0) {
+//             return res.status(400).json({ message: 'Invalid category ID' });
+//         }
+
+//         // Validate brand exists
+//         const [brandCheck] = await db.query(`SELECT id FROM product_brands WHERE id = ?`, [brandId]);
+//         if (brandCheck.length === 0) {
+//             return res.status(400).json({ message: 'Invalid brand ID' });
+//         }
+
+//         // Fetch existing product details
+//         const [existingProduct] = await db.query(`SELECT * FROM products WHERE id = ?`, [id]);
+//         if (existingProduct.length === 0) {
+//             return res.status(404).json({ message: 'Product not found' });
+//         }
+
+//         let imagePath = existingProduct[0].image_path;
+
+//         // Handle file upload
+//         if (req.file) {
+//             if (imagePath && await fs.access(imagePath).then(() => true).catch(() => false)) {
+//                 await fs.unlink(imagePath);
+//             }
+//             imagePath = `uploads/${req.file.filename}`;
+//         }
+
+//         // Build the update query
+//         let sql = `
+//             UPDATE products 
+//             SET 
+//                 name = ?, 
+//                 slug = ?, 
+//                 sku = ?, 
+//                 category = ?, 
+//                 barcode = ?, 
+//                 buying_price = ?, 
+//                 selling_price = ?, 
+//                 tax = ?, 
+//                 brand = ?, 
+//                 status = ?, 
+//                 can_purchasable = ?, 
+//                 show_stock_out = ?, 
+//                 refundable = ?, 
+//                 max_purchase_quantity = ?, 
+//                 low_stock_warning = ?, 
+//                 unit = ?, 
+//                 weight = ?, 
+//                 tags = ?, 
+//                 short_description = ?,
+//                 description = ?
+//         `;
+
+//         const values = [
+//             name || null,
+//             slug || null,
+//             sku,
+//             categoryId,
+//             barcode || null,
+//             parseFloat(buying_price) || 0,
+//             parseFloat(selling_price) || 0,
+//             tax || null,
+//             brandId,
+//             status || 'Active',
+//             can_purchasable || 'Yes',
+//             show_stock_out || 'Enable',
+//             refundable || 'Yes',
+//             parseInt(max_purchase_quantity, 10) || null,
+//             parseInt(low_stock_warning, 10) || null,
+//             unit || null,
+//             weight || null,
+//             tags || null,
+//             description || null,
+//             short_description || null
+//         ];
+
+//         if (req.file) {
+//             sql += `, image_path = ?`;
+//             values.push(imagePath);
+//         }
+
+//         sql += ` WHERE id = ?`;
+//         values.push(parseInt(id, 10));
+
+//         const [result] = await db.query(sql, values);
+
+//         if (result.affectedRows === 0) {
+//             return res.status(404).json({ message: 'Product not found' });
+//         }
+
+//         // Fetch updated product for response
+//         const [updatedProduct] = await db.query(`SELECT * FROM products WHERE id = ?`, [id]);
+
+//         res.status(200).json({
+//             success: true,
+//             message: 'Product updated successfully',
+//             updatedProduct: updatedProduct[0]
+//         });
+
+//     } catch (err) {
+//         console.error('Error updating product:', err.message);
+//         res.status(500).json({ message: 'Error updating product', error: err.message });
+//     }
+// });
+
+app.put('/api/products/:id', authenticate, upload.array('images', 4), async (req, res) => {
     const { id } = req.params;
     const {
         name, slug, sku, category, barcode, buying_price, selling_price, tax, brand, status,
@@ -2686,7 +2816,6 @@ app.put('/api/products/:id', authenticate, upload.single('image'), async (req, r
         low_stock_warning, unit, weight, tags, short_description, description
     } = req.body;
 
-    // Validate required fields
     if (!name || !sku || !buying_price || !selling_price || !category || !brand) {
         return res.status(400).json({
             message: 'Name, SKU, Buying Price, Selling Price, Category, and Brand are required fields'
@@ -2694,7 +2823,6 @@ app.put('/api/products/:id', authenticate, upload.single('image'), async (req, r
     }
 
     try {
-        // Convert category and brand to integers to prevent injection
         const categoryId = parseInt(category, 10);
         const brandId = parseInt(brand, 10);
 
@@ -2702,36 +2830,44 @@ app.put('/api/products/:id', authenticate, upload.single('image'), async (req, r
             return res.status(400).json({ message: 'Category and Brand must be valid IDs' });
         }
 
-        // Validate category exists
         const [categoryCheck] = await db.query(`SELECT id FROM product_categories WHERE id = ?`, [categoryId]);
         if (categoryCheck.length === 0) {
             return res.status(400).json({ message: 'Invalid category ID' });
         }
 
-        // Validate brand exists
         const [brandCheck] = await db.query(`SELECT id FROM product_brands WHERE id = ?`, [brandId]);
         if (brandCheck.length === 0) {
             return res.status(400).json({ message: 'Invalid brand ID' });
         }
 
-        // Fetch existing product details
         const [existingProduct] = await db.query(`SELECT * FROM products WHERE id = ?`, [id]);
         if (existingProduct.length === 0) {
             return res.status(404).json({ message: 'Product not found' });
         }
 
         let imagePath = existingProduct[0].image_path;
+        let imagePathsArray = [];
 
-        // Handle file upload
-        if (req.file) {
-            if (imagePath && await fs.access(imagePath).then(() => true).catch(() => false)) {
-                await fs.unlink(imagePath);
+        // If new images are uploaded:
+        if (req.files && req.files.length > 0) {
+            // Optional: delete old images if needed (your choice!)
+            // For now: replace with new images
+
+            imagePathsArray = req.files.map(file => file.path.replace(/\\/g, '/'));
+            imagePath = imagePathsArray.length > 0 ? imagePathsArray[0] : imagePath;  // first image = primary image
+        } else {
+            // No new images uploaded → keep existing image_paths
+            try {
+                imagePathsArray = JSON.parse(existingProduct[0].image_paths || '[]');
+            } catch (err) {
+                imagePathsArray = [];
             }
-            imagePath = `uploads/${req.file.filename}`;
         }
 
-        // Build the update query
-        let sql = `
+        const imagePathsString = JSON.stringify(imagePathsArray);
+
+        // Build SQL query
+        const sql = `
             UPDATE products 
             SET 
                 name = ?, 
@@ -2752,8 +2888,11 @@ app.put('/api/products/:id', authenticate, upload.single('image'), async (req, r
                 unit = ?, 
                 weight = ?, 
                 tags = ?, 
-                short_description = ?,
-                description = ?
+                short_description = ?, 
+                description = ?, 
+                image_path = ?, 
+                image_paths = ?
+            WHERE id = ?
         `;
 
         const values = [
@@ -2775,17 +2914,12 @@ app.put('/api/products/:id', authenticate, upload.single('image'), async (req, r
             unit || null,
             weight || null,
             tags || null,
+            short_description || null,
             description || null,
-            short_description || null
+            imagePath,             // primary image
+            imagePathsString,      // gallery images array
+            parseInt(id, 10)
         ];
-
-        if (req.file) {
-            sql += `, image_path = ?`;
-            values.push(imagePath);
-        }
-
-        sql += ` WHERE id = ?`;
-        values.push(parseInt(id, 10));
 
         const [result] = await db.query(sql, values);
 
@@ -2793,7 +2927,6 @@ app.put('/api/products/:id', authenticate, upload.single('image'), async (req, r
             return res.status(404).json({ message: 'Product not found' });
         }
 
-        // Fetch updated product for response
         const [updatedProduct] = await db.query(`SELECT * FROM products WHERE id = ?`, [id]);
 
         res.status(200).json({
@@ -2807,6 +2940,7 @@ app.put('/api/products/:id', authenticate, upload.single('image'), async (req, r
         res.status(500).json({ message: 'Error updating product', error: err.message });
     }
 });
+
 app.get('/api/purchasing', async (req, res) => {
     try {
         const [products] = await db.query("SELECT name, buying_price FROM products");
