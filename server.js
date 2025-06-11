@@ -1731,7 +1731,7 @@ app.get('/api/onlineordertrack/:orderId', async (req, res) => {
 //         "Inprogress Order",
 //         "Ready for Shipment",
 //         "On the Way",
-//         "Delevered",
+//         "Delivered",
 //         "On Hold",
 //         "Rejected"
 //     ];
@@ -1762,7 +1762,7 @@ app.put('/api/onlineorders/:order_id/status', authenticate, async (req, res) => 
 
     const allowedStatuses = [
         "Received Order", "Inprogress Order", "Ready for Shipment",
-        "On the Way", "Delevered", "On Hold", "Rejected"
+        "On the Way", "Delivered", "On Hold", "Rejected"
     ];
 
     if (!allowedStatuses.includes(order_status)) {
@@ -1858,7 +1858,7 @@ app.get('/api/onlineorders/received', authenticate, async (req, res) => {
 //         "Inprogress Order",
 //         "Ready for Shipment",
 //         "On the Way",
-//         "Delevered",
+//         "Delivered",
 //         "On Hold",
 //         "Rejected"
 //     ];
@@ -1891,7 +1891,7 @@ app.put('/api/onlineorders/update-received-status', authenticate, async (req, re
         "Inprogress Order",
         "Ready for Shipment",
         "On the Way",
-        "Delevered",
+        "Delivered",
         "On Hold",
         "Rejected"
     ];
@@ -1971,7 +1971,7 @@ app.put('/api/onlineorders/update-inprogress-status', authenticate, async (req, 
         "Inprogress Order",
         "Ready for Shipment",
         "On the Way",
-        "Delevered",
+        "Delivered",
         "On Hold",
         "Rejected"
     ];
@@ -2033,7 +2033,7 @@ app.put('/api/onlineorders/update-ready-status', authenticate, async (req, res) 
         "Inprogress Order",
         "Ready for Shipment",
         "On the Way",
-        "Delevered",
+        "Delivered",
         "On Hold",
         "Rejected"
     ];
@@ -2095,7 +2095,7 @@ app.put('/api/onlineorders/update-on-the-way-status', authenticate, async (req, 
         "Inprogress Order",
         "Ready for Shipment",
         "On the Way",
-        "Delevered",
+        "Delivered",
         "On Hold",
         "Rejected"
     ];
@@ -2122,7 +2122,7 @@ app.put('/api/onlineorders/update-on-the-way-status', authenticate, async (req, 
 // by Delevered orders status apis 
 app.get('/api/onlineorders/delevered', authenticate, async (req, res) => {
     try {
-        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'Delevered'`);
+        const [orders] = await db.query(`SELECT * FROM onlineorders WHERE order_status = 'Delivered'`);
 
         const formattedOrders = orders.map(order => {
             try {
@@ -2145,7 +2145,7 @@ app.get('/api/onlineorders/delevered', authenticate, async (req, res) => {
 
         res.status(200).json(formattedOrders);
     } catch (error) {
-        console.error('❌ Failed to fetch "Delevered" orders:', error);
+        console.error('❌ Failed to fetch "Delivered" orders:', error);
         res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
     }
 });
@@ -2157,7 +2157,7 @@ app.put('/api/onlineorders/update-delevered-status', authenticate, async (req, r
         "Inprogress Order",
         "Ready for Shipment",
         "On the Way",
-        "Delevered",
+        "Delivered",
         "On Hold",
         "Rejected"
     ];
@@ -2168,16 +2168,16 @@ app.put('/api/onlineorders/update-delevered-status', authenticate, async (req, r
 
     try {
         const [result] = await db.query(
-            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'Delevered'",
+            "UPDATE onlineorders SET order_status = ? WHERE order_status = 'Delivered'",
             [new_status]
         );
 
         res.status(200).json({
-            message: `Updated ${result.affectedRows} order(s) from 'Delevered' to '${new_status}'`,
+            message: `Updated ${result.affectedRows} order(s) from 'Delivered' to '${new_status}'`,
             updatedCount: result.affectedRows
         });
     } catch (error) {
-        console.error("❌ Error updating 'Delevered' statuses:", error);
+        console.error("❌ Error updating 'Delivered' statuses:", error);
         res.status(500).json({ message: "Failed to update statuses.", error: error.message });
     }
 });
@@ -2219,7 +2219,7 @@ app.put('/api/onlineorders/update-on-hold-status', authenticate, async (req, res
         "Inprogress Order",
         "Ready for Shipment",
         "On the Way",
-        "Delevered",
+        "Delivered",
         "On Hold",
         "Rejected"
     ];
@@ -2283,7 +2283,7 @@ app.put('/api/onlineorders/update-rejected-status', authenticate, async (req, re
         "Inprogress Order",
         "Ready for Shipment",
         "On the Way",
-        "Delevered",
+        "Delivered",
         "On Hold",
         "Rejected"
     ];
