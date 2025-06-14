@@ -3541,6 +3541,183 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //         res.status(500).json({ error: 'Error processing Excel file' });
 //     }
 // });
+// app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
+//     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+//     let insertedCount = 0;
+//     let skippedCount = 0;
+//     let errorLogs = [];
+
+//     try {
+//         const workbook = xlsx.readFile(req.file.path);
+//         const sheet = workbook.Sheets[workbook.SheetNames[0]];
+//         const data = xlsx.utils.sheet_to_json(sheet);
+//         const totalRows = data.length;
+
+//         const productsToInsert = [];
+
+//         for (const row of data) {
+//             // Normalize headers to lowercase
+//             const normalizedRow = {};
+//             Object.keys(row).forEach(key => {
+//                 normalizedRow[key.toLowerCase()] = row[key];
+//             });
+
+//             const sku = String(normalizedRow.sku || '').trim();
+//             const name = String(normalizedRow.name || '').trim();
+//             const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+
+//             if (!sku || !name) {
+//                 skippedCount++;
+//                 errorLogs.push({ name: sku || 'Unnamed', reason: 'Missing SKU or name' });
+//                 continue;
+//             }
+
+//             // === BRAND HANDLING ===
+//             let brandId = null;
+//             const brandName = normalizedRow.brand?.trim();
+//             if (brandName) {
+//                 const [brand] = await db.query('SELECT id FROM product_brands WHERE name = ?', [brandName]);
+//                 if (brand.length > 0) {
+//                     brandId = brand[0].id;
+//                 } else {
+//                     const result = await db.query(
+//                         'INSERT INTO product_brands (name, status) VALUES (?, ?)',
+//                         [brandName, 'Active']
+//                     );
+//                     brandId = result[0].insertId;
+//                 }
+//             }
+
+//             // === CATEGORY HANDLING ===
+//             let categoryId = null;
+//             const categoryName = normalizedRow.category?.trim();
+//             if (categoryName) {
+//                 const [category] = await db.query('SELECT id FROM product_categories WHERE name = ?', [categoryName]);
+//                 if (category.length > 0) {
+//                     categoryId = category[0].id;
+//                 } else {
+//                     const result = await db.query(
+//                         'INSERT INTO product_categories (name, status) VALUES (?, ?)',
+//                         [categoryName, 'Active']
+//                     );
+//                     categoryId = result[0].insertId;
+//                 }
+//             }
+
+//             // === SPECIFICATIONS ===
+//             let specifications = [];
+//             try {
+//                 if (normalizedRow.specifications) {
+//                     const specsString = String(normalizedRow.specifications).trim();
+//                     if (specsString.startsWith('[')) {
+//                         specifications = JSON.parse(specsString.replace(/<br\s*\/?>/g, '\n'));
+//                     } else {
+//                         specifications = specsString.split(',').map(i => i.trim());
+//                     }
+//                 }
+//             } catch (err) {
+//                 errorLogs.push({ name, reason: `Specifications parse error: ${err.message}` });
+//             }
+
+//             // === DETAILS ===
+//             let details = [];
+//             try {
+//                 if (normalizedRow.details) {
+//                     let detailsString = String(normalizedRow.details).trim();
+//                     if (detailsString.startsWith('[')) {
+//                         detailsString = detailsString
+//                             .replace(/<br\s*\/?>/gi, '')
+//                             .replace(/\\"/g, '"')
+//                             .replace(/'/g, '"')
+//                             .replace(/(\w)"(\w)/g, '$1\\"$2');
+//                         try {
+//                             details = JSON.parse(detailsString);
+//                         } catch {
+//                             detailsString = detailsString
+//                                 .replace(/,\s*]/g, ']')
+//                                 .replace(/,\s*$/g, '')
+//                                 .replace(/"\s*,\s*"/g, '","');
+//                             try {
+//                                 details = JSON.parse(detailsString);
+//                             } catch {
+//                                 details = detailsString.slice(1, -1).split(',').map(i => i.trim().replace(/^"(.*)"$/, '$1'));
+//                             }
+//                         }
+//                     } else {
+//                         details = [detailsString];
+//                     }
+//                     details = details.map(d => String(d).replace(/<br\s*\/?>/gi, '\n').replace(/\\"/g, '"').trim());
+//                 }
+//             } catch (err) {
+//                 errorLogs.push({ name, reason: `Details parse error: ${err.message}` });
+//                 details = [];
+//             }
+
+//             // === IMAGE PLACEHOLDER ===
+//             const localImageFilename = ''; // You can extend image upload logic
+//             const localImagePaths = [];
+
+//             // === Final Row Insert ===
+//             productsToInsert.push([
+//                 sku,
+//                 slug,
+//                 categoryId,
+//                 normalizedRow.barcode || '',
+//                 normalizedRow.buying_price || 0,
+//                 normalizedRow.selling_price || 0,
+//                 normalizedRow.offer_price || 0,
+//                 normalizedRow.tax || 'VAT-1',
+//                 brandId,
+//                 'Active',
+//                 'Yes',
+//                 'Enable',
+//                 'Yes',
+//                 normalizedRow.max_purchase_quantity || 10,
+//                 normalizedRow.low_stock_warning || 5,
+//                 normalizedRow.unit || 'unit',
+//                 normalizedRow.weight || 0,
+//                 normalizedRow.tags || '',
+//                 normalizedRow.short_description || '',
+//                 normalizedRow.description || '',
+//                 localImageFilename,
+//                 JSON.stringify(localImagePaths),
+//                 normalizedRow.discount || 0,
+//                 JSON.stringify(specifications),
+//                 JSON.stringify(details),
+//                 name
+//             ]);
+
+//             insertedCount++;
+//         }
+
+//         // === Final Insert Query ===
+//         if (productsToInsert.length) {
+//             await db.query(`
+//                 INSERT INTO products (
+//                     sku, slug, category, barcode, buying_price, selling_price, offer_price, tax, brand,
+//                     status, can_purchasable, show_stock_out, refundable, max_purchase_quantity, low_stock_warning, unit,
+//                     weight, tags, short_description, description, image_path, image_paths, discount,
+//                     specifications, details, name
+//                 ) VALUES ?`, [productsToInsert]);
+//         }
+
+//         fs.unlinkSync(req.file.path);
+
+//         res.json({
+//             message: 'Excel import completed.',
+//             totalRows,
+//             inserted: insertedCount,
+//             skipped: skippedCount,
+//             errors: errorLogs
+//         });
+
+//     } catch (err) {
+//         console.error('❌ Upload Error:', err);
+//         if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+//         res.status(500).json({ error: 'Error processing Excel file' });
+//     }
+// });
 app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -3557,7 +3734,6 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
         const productsToInsert = [];
 
         for (const row of data) {
-            // Normalize headers to lowercase
             const normalizedRow = {};
             Object.keys(row).forEach(key => {
                 normalizedRow[key.toLowerCase()] = row[key];
@@ -3605,6 +3781,20 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 }
             }
 
+            // ✅ Skip if product with same name + slug + category + brand exists
+            const [existing] = await db.query(
+                'SELECT id FROM products WHERE name = ? AND slug = ? AND category = ? AND brand = ?',
+                [name, slug, categoryId, brandId]
+            );
+            if (existing.length > 0) {
+                skippedCount++;
+                errorLogs.push({
+                    name,
+                    reason: 'Product with same name, slug, category, and brand already exists'
+                });
+                continue;
+            }
+
             // === SPECIFICATIONS ===
             let specifications = [];
             try {
@@ -3613,7 +3803,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                     if (specsString.startsWith('[')) {
                         specifications = JSON.parse(specsString.replace(/<br\s*\/?>/g, '\n'));
                     } else {
-                        specifications = specsString.split(',').map(i => i.trim());
+                        specifications = specsString.split(',').map(item => item.trim());
                     }
                 }
             } catch (err) {
@@ -3655,10 +3845,10 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
             }
 
             // === IMAGE PLACEHOLDER ===
-            const localImageFilename = ''; // You can extend image upload logic
+            const localImageFilename = '';
             const localImagePaths = [];
 
-            // === Final Row Insert ===
+            // === FINAL PRODUCT ROW PREPARATION ===
             productsToInsert.push([
                 sku,
                 slug,
@@ -3691,8 +3881,8 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
             insertedCount++;
         }
 
-        // === Final Insert Query ===
-        if (productsToInsert.length) {
+        // === BULK INSERT ===
+        if (productsToInsert.length > 0) {
             await db.query(`
                 INSERT INTO products (
                     sku, slug, category, barcode, buying_price, selling_price, offer_price, tax, brand,
@@ -3715,9 +3905,11 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
     } catch (err) {
         console.error('❌ Upload Error:', err);
         if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.status(500).json({ error: 'Error processing Excel file' });
+        res.status(500).json({ error: err.message }); // ✅ full error in response
     }
 });
+
+
 // app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
 //     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
