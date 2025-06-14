@@ -3923,6 +3923,26 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
         const totalRows = data.length;
         const productsToInsert = [];
 
+        const downloadImage = async (url) => {
+            try {
+                const response = await axios.get(url, { responseType: 'stream' });
+                const ext = path.extname(url).split('?')[0] || '.png'; // Ensure extension
+                const filename = `${uuidv4()}${ext}`;
+                const filepath = path.join('Uploads', filename);
+
+                const writer = fs.createWriteStream(filepath);
+                response.data.pipe(writer);
+                await new Promise((resolve, reject) => {
+                    writer.on('finish', resolve);
+                    writer.on('error', reject);
+                });
+                return filename;
+            } catch (err) {
+                errorLogs.push({ reason: `Image download failed: ${err.message}` });
+                return null;
+            }
+        };
+
         for (const row of data) {
             const normalizedRow = {};
             Object.keys(row).forEach(key => {
@@ -3939,7 +3959,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 continue;
             }
 
-            // BRAND HANDLING
+            // Brand Handling
             let brandId = null;
             const brandName = normalizedRow.brand?.trim();
             if (brandName) {
@@ -3955,7 +3975,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 }
             }
 
-            // PARENT CATEGORY HANDLING
+            // Parent Category Handling
             let categoryId = null;
             const categoryName = normalizedRow.category?.trim();
             let parentCategoryId = null;
@@ -3981,7 +4001,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 }
             }
 
-            // DUPLICATE CHECK
+            // Duplicate Check
             const [existing] = await db.query(
                 'SELECT id FROM products WHERE name = ? AND slug = ? AND category = ? AND brand = ?',
                 [name, slug, categoryId, brandId]
@@ -3995,7 +4015,7 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 continue;
             }
 
-            // SPECIFICATIONS
+            // Specifications Parsing
             let specifications = [];
             try {
                 const specsString = String(normalizedRow.specifications || '').trim();
@@ -4008,26 +4028,16 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 errorLogs.push({ name, reason: `Specifications parse error: ${err.message}` });
             }
 
-            // DETAILS
+            // Details Parsing
             let details = [];
             try {
                 let detailsString = String(normalizedRow.details || '').trim();
                 if (detailsString.startsWith('[')) {
-                    detailsString = detailsString
-                        .replace(/<br\s*\/?>/gi, '')
-                        .replace(/\\"/g, '"')
-                        .replace(/'/g, '"')
-                        .replace(/(\w)"(\w)/g, '$1\\"$2');
+                    detailsString = detailsString.replace(/<br\s*\/?>/gi, '').replace(/\\"/g, '"').replace(/'/g, '"').replace(/(\w)"(\w)/g, '$1\\"$2');
                     try {
                         details = JSON.parse(detailsString);
                     } catch {
-                        details = detailsString
-                            .replace(/,\s*]/g, ']')
-                            .replace(/,\s*$/, '')
-                            .replace(/"\s*,\s*"/g, '","')
-                            .slice(1, -1)
-                            .split(',')
-                            .map(i => i.trim().replace(/^"(.*)"$/, '$1'));
+                        details = detailsString.replace(/,\s*]/g, ']').replace(/,\s*$/, '').replace(/"\s*,\s*"/g, '","').slice(1, -1).split(',').map(i => i.trim().replace(/^"(.*)"$/, '$1'));
                     }
                 } else if (detailsString) {
                     details = [detailsString];
@@ -4038,29 +4048,9 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
                 details = [];
             }
 
-            // IMAGE DOWNLOAD
+            // Image Handling
             let localImageFilename = '';
             const localImagePaths = [];
-
-            const downloadImage = async (url) => {
-                try {
-                    const response = await axios.get(url, { responseType: 'stream' });
-                    const ext = path.extname(url).split('?')[0] || '.png';
-                    const filename = `${uuidv4()}${ext}`;
-                    const filepath = path.join('Uploads', filename);
-
-                    const writer = fs.createWriteStream(filepath);
-                    response.data.pipe(writer);
-                    await new Promise((resolve, reject) => {
-                        writer.on('finish', resolve);
-                        writer.on('error', reject);
-                    });
-                    return filename;
-                } catch (err) {
-                    errorLogs.push({ name, reason: `Image download failed: ${err.message}` });
-                    return null;
-                }
-            };
 
             if (normalizedRow.image_path) {
                 const file = await downloadImage(normalizedRow.image_path);
@@ -4070,16 +4060,17 @@ app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => 
             if (normalizedRow.image_paths) {
                 try {
                     const paths = JSON.parse(normalizedRow.image_paths);
-                    for (const url of paths) {
+                    const downloadPromises = paths.map(async (url) => {
                         const file = await downloadImage(url);
                         if (file) localImagePaths.push(`Uploads/${file}`);
-                    }
+                    });
+                    await Promise.all(downloadPromises);
                 } catch (err) {
                     errorLogs.push({ name, reason: `Image paths parse error: ${err.message}` });
                 }
             }
 
-            // FINAL PRODUCT DATA
+            // Final Product Data
             productsToInsert.push([
                 sku,
                 slug,
