@@ -2940,6 +2940,235 @@ app.put('/api/products/:id', authenticate, upload.array('images', 4), async (req
         res.status(500).json({ message: 'Error updating product', error: err.message });
     }
 });
+// rating products 
+// API to Submit User Rating
+// app.post('/api/ratings', async (req, res) => {
+//     const { slug, name, email, rating, review } = req.body;
+
+//     try {
+//         const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+//         if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
+
+//         const productId = productRows[0].id;
+//         await db.query(
+//             `INSERT INTO product_ratings (product_id, name, email, rating, review) VALUES (?, ?, ?, ?, ?)`,
+//             [productId, name, email, rating, review]
+//         );
+
+//         res.json({ success: true, message: 'Review submitted, pending approval' });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error submitting review' });
+//     }
+// });
+
+app.post('/api/ratings', async (req, res) => {
+  const { slug, name, email, rating, review, client_time } = req.body;
+
+  try {
+    const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+    if (productRows.length === 0)
+      return res.status(404).json({ message: 'Product not found' });
+
+    const productId = productRows[0].id;
+
+    await db.query(
+      `INSERT INTO product_ratings (product_id, name, email, rating, review, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [productId, name, email, rating, review, client_time]
+    );
+
+    res.json({ success: true, message: 'Review submitted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error submitting review' });
+  }
+});
+//  API to Approve/Reject Rating (Admin) 
+app.put('/api/ratings/:id/approve', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'approved' or 'rejected'
+
+    try {
+        await db.query(`UPDATE product_ratings SET approved = ? WHERE id = ?`, [status, id]);
+        res.json({ success: true, message: `Review ${status}` });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating review status' });
+    }
+});
+// API to Get Approved Ratings by Slug 
+app.get('/api/ratings/:slug', async (req, res) => {
+    const { slug } = req.params;
+
+    try {
+        const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+        if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
+
+        const productId = productRows[0].id;
+
+        const [reviews] = await db.query(
+            `SELECT name, rating, review, created_at FROM product_ratings 
+             WHERE product_id = ? AND approved = 'approved' 
+             ORDER BY created_at DESC`,
+            [productId]
+        );
+
+        res.json({ success: true, reviews });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching reviews' });
+    }
+});
+// Admin Adds Dummy Rating with All User Information 
+app.post('/api/ratings/dummy', async (req, res) => {
+    const { slug, name, email, rating, review } = req.body;
+
+    try {
+        // Check if the product exists based on the slug
+        const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+        if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
+
+        const productId = productRows[0].id;
+
+        // Insert the dummy rating as if it came from an admin but allow full information
+        await db.query(
+            `INSERT INTO product_ratings (product_id, name, email, rating, review, approved)
+             VALUES (?, ?, ?, ?, ?, 'approved')`,
+            [productId, name, email, rating, review]
+        );
+
+        res.json({ success: true, message: 'Dummy rating added successfully and approved' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error adding dummy rating' });
+    }
+});
+// PUT API to Update Rating
+app.put('/api/ratings/:id', async (req, res) => {
+    const { id } = req.params;
+    const {
+        slug,
+        name,
+        email,
+        rating,
+        review,
+        approved
+    } = req.body;
+
+    try {
+        // Check if the product exists
+        const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+        if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
+
+        const productId = productRows[0].id;
+
+        // Check if the rating exists
+        const [ratingRows] = await db.query('SELECT * FROM product_ratings WHERE id = ?', [id]);
+        if (ratingRows.length === 0) return res.status(404).json({ message: 'Rating not found' });
+
+        // Update the rating in the database
+        await db.query(
+            `UPDATE product_ratings
+             SET name = ?, email = ?, rating = ?, review = ?, approved = ?, product_id = ?
+             WHERE id = ?`,
+            [name, email, rating, review, approved, productId, id]
+        );
+
+        res.json({ success: true, message: 'Rating updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating rating' });
+    }
+});
+// DELETE API to Delete Rating 
+app.delete('/api/ratings/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Check if the rating exists
+        const [ratingRows] = await db.query('SELECT * FROM product_ratings WHERE id = ?', [id]);
+        if (ratingRows.length === 0) return res.status(404).json({ message: 'Rating not found' });
+
+        // Delete the rating
+        await db.query('DELETE FROM product_ratings WHERE id = ?', [id]);
+
+        res.json({ success: true, message: 'Rating deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error deleting rating' });
+    }
+});
+// GET API to Get All Ratings for a Product 
+app.get('/api/ratings/:slug', async (req, res) => {
+    const { slug } = req.params;
+
+    try {
+        // Check if the product exists
+        const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+        if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
+
+        const productId = productRows[0].id;
+
+        // Fetch approved ratings for the product
+        const [ratings] = await db.query(
+            `SELECT name, email, rating, review, created_at
+             FROM product_ratings
+             WHERE product_id = ? AND approved = 'approved'
+             ORDER BY created_at DESC`,
+            [productId]
+        );
+
+        res.json({ success: true, ratings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching ratings' });
+    }
+});
+// GET API to Fetch All Ratings by Product ID (Approved, Pending, or Rejected) 
+app.get('/api/ratings/id/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Check if the product exists based on the provided ID
+        const [productRows] = await db.query('SELECT id FROM products WHERE id = ?', [id]);
+        if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
+
+        // Fetch all ratings (approved, pending, rejected) for the product by ID
+        const [ratings] = await db.query(
+            `SELECT id, name, email, rating, review, approved, created_at
+             FROM product_ratings
+             WHERE product_id = ?
+             ORDER BY created_at DESC`,
+            [id]
+        );
+
+        res.json({ success: true, ratings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching ratings' });
+    }
+});
+//  GET API to Fetch All Ratings (Approved, Pending, or Rejected for All Products) 
+app.get('/api/ratings', async (req, res) => {
+    try {
+        // Fetch all ratings (approved, pending, rejected) for all products
+        const [ratings] = await db.query(
+            `SELECT r.id, r.product_id, r.name, r.email, r.rating, r.review, r.approved, r.created_at, p.slug
+             FROM product_ratings r
+             JOIN products p ON r.product_id = p.id
+             ORDER BY r.created_at DESC`
+        );
+
+        res.json({ success: true, ratings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching ratings' });
+    }
+});
+
+
+
 
 app.get('/api/purchasing', async (req, res) => {
     try {
@@ -4167,13 +4396,13 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //         // Function to handle category creation with image
 //         const handleCategory = async (categoryName, parentCategoryName = null) => {
 //             if (!categoryName) return null;
-            
+
 //             // Check if category already exists
 //             const [existingCategory] = await db.query(
 //                 'SELECT id, image FROM product_categories WHERE name = ?', 
 //                 [categoryName]
 //             );
-            
+
 //             let categoryId = existingCategory.length > 0 ? existingCategory[0].id : null;
 //             let categoryImage = existingCategory.length > 0 ? existingCategory[0].image : null;
 
@@ -4309,7 +4538,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //                     const paths = Array.isArray(normalizedRow.image_paths) 
 //                         ? normalizedRow.image_paths 
 //                         : normalizedRow.image_paths.split(',').map(p => p.trim());
-                    
+
 //                     const downloadPromises = paths.map(async (url) => {
 //                         const file = await downloadImage(url);
 //                         if (file) localImagePaths.push(`Uploads/${file}`);
@@ -4437,14 +4666,14 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //     // Updated category handling with proper error handling
 //     const handleCategory = async (categoryName, parentCategoryName = null) => {
 //       if (!categoryName) return null;
-      
+
 //       try {
 //         // Check if category exists
 //         const [existingCategories] = await db.query(
 //           'SELECT id FROM product_categories WHERE name = ?', 
 //           [categoryName]
 //         );
-        
+
 //         let categoryId = existingCategories.length > 0 ? existingCategories[0].id : null;
 
 //         // Handle parent category
@@ -4454,7 +4683,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //             'SELECT id FROM product_categories WHERE name = ?', 
 //             [parentCategoryName]
 //           );
-          
+
 //           if (parentCategories.length > 0) {
 //             parentCategoryId = parentCategories[0].id;
 //           } else {
@@ -4462,7 +4691,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //               'INSERT INTO product_categories (name, status) VALUES (?, ?)',
 //               [parentCategoryName, 'Active']
 //             );
-            
+
 //             if (!parentInsertResult || !parentInsertResult.insertId) {
 //               throw new Error('Failed to create parent category');
 //             }
@@ -4476,7 +4705,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //             'INSERT INTO product_categories (name, status, parent_category) VALUES (?, ?, ?)',
 //             [categoryName, 'Active', parentCategoryId]
 //           );
-          
+
 //           if (!categoryInsertResult || !categoryInsertResult.insertId) {
 //             throw new Error('Failed to create category');
 //           }
@@ -4521,7 +4750,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //                 'INSERT INTO product_brands (name, status) VALUES (?, ?)',
 //                 [brandName, 'Active']
 //               );
-              
+
 //               if (!brandInsertResult || !brandInsertResult.insertId) {
 //                 throw new Error('Failed to create brand');
 //               }
@@ -4612,7 +4841,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //             const paths = Array.isArray(normalizedRow.image_paths) 
 //               ? normalizedRow.image_paths 
 //               : normalizedRow.image_paths.split(',').map(p => p.trim());
-            
+
 //             const downloadPromises = paths.map(url => downloadImage(url));
 //             const downloadedFiles = await Promise.all(downloadPromises);
 //             additionalImageFilenames.push(...downloadedFiles.filter(file => file !== null));
@@ -4668,7 +4897,7 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 //             weight, tags, short_description, description, image_path, image_paths, discount,
 //             specifications, details, name
 //           ) VALUES ?`, [productsToInsert]);
-        
+
 //         if (!insertResult || !insertResult.affectedRows) {
 //           throw new Error('Failed to insert products');
 //         }
@@ -4699,318 +4928,318 @@ app.get('/api/products/:id', authenticate, async (req, res) => {
 // });
 
 if (!fs.existsSync('Uploads')) {
-  fs.mkdirSync('Uploads');
+    fs.mkdirSync('Uploads');
 }
 
 app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  let insertedCount = 0;
-  let skippedCount = 0;
-  let errorLogs = [];
+    let insertedCount = 0;
+    let skippedCount = 0;
+    let errorLogs = [];
 
-  try {
-    const workbook = xlsx.readFile(req.file.path);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = xlsx.utils.sheet_to_json(sheet);
-    const totalRows = data.length;
-    const productsToInsert = [];
+    try {
+        const workbook = xlsx.readFile(req.file.path);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = xlsx.utils.sheet_to_json(sheet);
+        const totalRows = data.length;
+        const productsToInsert = [];
 
-    const downloadImage = async (url) => {
-      try {
-        if (!url || typeof url !== 'string' || !url.startsWith('http')) {
-          throw new Error('Invalid URL');
-        }
-
-        const cleanUrl = url.split('?')[0];
-        const ext = path.extname(cleanUrl) || '.png';
-        const filename = `${Date.now()}${ext}`;
-        const filepath = path.join('Uploads', filename);
-
-        const response = await axios({
-          method: 'get',
-          url: url,
-          responseType: 'stream',
-          timeout: 10000
-        });
-
-        const writer = fs.createWriteStream(filepath);
-        response.data.pipe(writer);
-
-        await new Promise((resolve, reject) => {
-          writer.on('finish', resolve);
-          writer.on('error', (err) => {
-            fs.unlinkSync(filepath);
-            reject(err);
-          });
-        });
-
-        return filename;
-      } catch (err) {
-        console.error(`Failed to download image from ${url}:`, err.message);
-        errorLogs.push({ reason: `Image download failed for ${url}: ${err.message}` });
-        return null;
-      }
-    };
-
-    const handleCategory = async (categoryName, parentCategoryName = null) => {
-      if (!categoryName) return null;
-      
-      try {
-        const [existingCategories] = await db.query(
-          'SELECT id FROM product_categories WHERE name = ?', 
-          [categoryName]
-        );
-        
-        let categoryId = existingCategories.length > 0 ? existingCategories[0].id : null;
-
-        let parentCategoryId = null;
-        if (parentCategoryName) {
-          const [parentCategories] = await db.query(
-            'SELECT id FROM product_categories WHERE name = ?', 
-            [parentCategoryName]
-          );
-          
-          if (parentCategories.length > 0) {
-            parentCategoryId = parentCategories[0].id;
-          } else {
-            const [parentInsertResult] = await db.query(
-              'INSERT INTO product_categories (name, status) VALUES (?, ?)',
-              [parentCategoryName, 'Active']
-            );
-            
-            if (!parentInsertResult || !parentInsertResult.insertId) {
-              throw new Error('Failed to create parent category');
-            }
-            parentCategoryId = parentInsertResult.insertId;
-          }
-        }
-
-        if (!categoryId) {
-          const [categoryInsertResult] = await db.query(
-            'INSERT INTO product_categories (name, status, parent_category) VALUES (?, ?, ?)',
-            [categoryName, 'Active', parentCategoryId]
-          );
-          
-          if (!categoryInsertResult || !categoryInsertResult.insertId) {
-            throw new Error('Failed to create category');
-          }
-          categoryId = categoryInsertResult.insertId;
-        }
-
-        return categoryId;
-      } catch (err) {
-        console.error(`Error handling category ${categoryName}:`, err);
-        errorLogs.push({ reason: `Category handling error: ${err.message}` });
-        return null;
-      }
-    };
-
-    for (const row of data) {
-      try {
-        const normalizedRow = {};
-        Object.keys(row).forEach(key => {
-          normalizedRow[key.toLowerCase()] = row[key];
-        });
-
-        const sku = String(normalizedRow.sku || '').trim();
-        const name = String(normalizedRow.name || '').trim();
-        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
-
-        if (!sku || !name) {
-          skippedCount++;
-          errorLogs.push({ name: sku || 'Unnamed', reason: 'Missing SKU or name' });
-          continue;
-        }
-
-        let brandId = null;
-        const brandName = normalizedRow.brand?.trim();
-        if (brandName) {
-          try {
-            const [brands] = await db.query('SELECT id FROM product_brands WHERE name = ?', [brandName]);
-            if (brands.length > 0) {
-              brandId = brands[0].id;
-            } else {
-              const [brandInsertResult] = await db.query(
-                'INSERT INTO product_brands (name, status) VALUES (?, ?)',
-                [brandName, 'Active']
-              );
-              
-              if (!brandInsertResult || !brandInsertResult.insertId) {
-                throw new Error('Failed to create brand');
-              }
-              brandId = brandInsertResult.insertId;
-            }
-          } catch (err) {
-            console.error(`Error handling brand ${brandName}:`, err);
-            errorLogs.push({ name, reason: `Brand handling error: ${err.message}` });
-            continue;
-          }
-        }
-
-        const categoryName = normalizedRow.category?.trim();
-        const parentCategoryName = normalizedRow.parent_category?.trim();
-        const categoryId = await handleCategory(categoryName, parentCategoryName);
-
-        if (!categoryId) {
-          skippedCount++;
-          errorLogs.push({ name, reason: 'Invalid category' });
-          continue;
-        }
-
-        try {
-          const [existingProducts] = await db.query(
-            'SELECT id FROM products WHERE name = ? AND slug = ? AND category = ? AND brand = ?',
-            [name, slug, categoryId, brandId]
-          );
-          if (existingProducts.length > 0) {
-            skippedCount++;
-            errorLogs.push({
-              name,
-              reason: 'Product with same name, slug, category, and brand already exists'
-            });
-            continue;
-          }
-        } catch (err) {
-          console.error(`Error checking for duplicates for ${name}:`, err);
-          errorLogs.push({ name, reason: `Duplicate check error: ${err.message}` });
-          continue;
-        }
-
-        let specifications = [];
-        try {
-          const specsString = String(normalizedRow.specifications || '').trim();
-          if (specsString.startsWith('[')) {
-            specifications = JSON.parse(specsString.replace(/<br\s*\/?>/g, '\n'));
-          } else if (specsString) {
-            specifications = specsString.split(',').map(item => item.trim());
-          }
-        } catch (err) {
-          errorLogs.push({ name, reason: `Specifications parse error: ${err.message}` });
-        }
-
-        let details = [];
-        try {
-          let detailsString = String(normalizedRow.details || '').trim();
-          if (detailsString.startsWith('[')) {
-            detailsString = detailsString.replace(/<br\s*\/?>/gi, '').replace(/\\"/g, '"').replace(/'/g, '"').replace(/(\w)"(\w)/g, '$1\\"$2');
+        const downloadImage = async (url) => {
             try {
-              details = JSON.parse(detailsString);
-            } catch {
-              details = detailsString.replace(/,\s*]/g, ']').replace(/,\s*$/, '').replace(/"\s*,\s*"/g, '","').slice(1, -1).split(',').map(i => i.trim().replace(/^"(.*)"$/, '$1'));
+                if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+                    throw new Error('Invalid URL');
+                }
+
+                const cleanUrl = url.split('?')[0];
+                const ext = path.extname(cleanUrl) || '.png';
+                const filename = `${Date.now()}${ext}`;
+                const filepath = path.join('Uploads', filename);
+
+                const response = await axios({
+                    method: 'get',
+                    url: url,
+                    responseType: 'stream',
+                    timeout: 10000
+                });
+
+                const writer = fs.createWriteStream(filepath);
+                response.data.pipe(writer);
+
+                await new Promise((resolve, reject) => {
+                    writer.on('finish', resolve);
+                    writer.on('error', (err) => {
+                        fs.unlinkSync(filepath);
+                        reject(err);
+                    });
+                });
+
+                return filename;
+            } catch (err) {
+                console.error(`Failed to download image from ${url}:`, err.message);
+                errorLogs.push({ reason: `Image download failed for ${url}: ${err.message}` });
+                return null;
             }
-          } else if (detailsString) {
-            details = [detailsString];
-          }
-          details = details.map(d => String(d).replace(/<br\s*\/?>/gi, '\n').replace(/\\"/g, '"').trim());
-        } catch (err) {
-          errorLogs.push({ name, reason: `Details parse error: ${err.message}` });
-          details = [];
+        };
+
+        const handleCategory = async (categoryName, parentCategoryName = null) => {
+            if (!categoryName) return null;
+
+            try {
+                const [existingCategories] = await db.query(
+                    'SELECT id FROM product_categories WHERE name = ?',
+                    [categoryName]
+                );
+
+                let categoryId = existingCategories.length > 0 ? existingCategories[0].id : null;
+
+                let parentCategoryId = null;
+                if (parentCategoryName) {
+                    const [parentCategories] = await db.query(
+                        'SELECT id FROM product_categories WHERE name = ?',
+                        [parentCategoryName]
+                    );
+
+                    if (parentCategories.length > 0) {
+                        parentCategoryId = parentCategories[0].id;
+                    } else {
+                        const [parentInsertResult] = await db.query(
+                            'INSERT INTO product_categories (name, status) VALUES (?, ?)',
+                            [parentCategoryName, 'Active']
+                        );
+
+                        if (!parentInsertResult || !parentInsertResult.insertId) {
+                            throw new Error('Failed to create parent category');
+                        }
+                        parentCategoryId = parentInsertResult.insertId;
+                    }
+                }
+
+                if (!categoryId) {
+                    const [categoryInsertResult] = await db.query(
+                        'INSERT INTO product_categories (name, status, parent_category) VALUES (?, ?, ?)',
+                        [categoryName, 'Active', parentCategoryId]
+                    );
+
+                    if (!categoryInsertResult || !categoryInsertResult.insertId) {
+                        throw new Error('Failed to create category');
+                    }
+                    categoryId = categoryInsertResult.insertId;
+                }
+
+                return categoryId;
+            } catch (err) {
+                console.error(`Error handling category ${categoryName}:`, err);
+                errorLogs.push({ reason: `Category handling error: ${err.message}` });
+                return null;
+            }
+        };
+
+        for (const row of data) {
+            try {
+                const normalizedRow = {};
+                Object.keys(row).forEach(key => {
+                    normalizedRow[key.toLowerCase()] = row[key];
+                });
+
+                const sku = String(normalizedRow.sku || '').trim();
+                const name = String(normalizedRow.name || '').trim();
+                const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+
+                if (!sku || !name) {
+                    skippedCount++;
+                    errorLogs.push({ name: sku || 'Unnamed', reason: 'Missing SKU or name' });
+                    continue;
+                }
+
+                let brandId = null;
+                const brandName = normalizedRow.brand?.trim();
+                if (brandName) {
+                    try {
+                        const [brands] = await db.query('SELECT id FROM product_brands WHERE name = ?', [brandName]);
+                        if (brands.length > 0) {
+                            brandId = brands[0].id;
+                        } else {
+                            const [brandInsertResult] = await db.query(
+                                'INSERT INTO product_brands (name, status) VALUES (?, ?)',
+                                [brandName, 'Active']
+                            );
+
+                            if (!brandInsertResult || !brandInsertResult.insertId) {
+                                throw new Error('Failed to create brand');
+                            }
+                            brandId = brandInsertResult.insertId;
+                        }
+                    } catch (err) {
+                        console.error(`Error handling brand ${brandName}:`, err);
+                        errorLogs.push({ name, reason: `Brand handling error: ${err.message}` });
+                        continue;
+                    }
+                }
+
+                const categoryName = normalizedRow.category?.trim();
+                const parentCategoryName = normalizedRow.parent_category?.trim();
+                const categoryId = await handleCategory(categoryName, parentCategoryName);
+
+                if (!categoryId) {
+                    skippedCount++;
+                    errorLogs.push({ name, reason: 'Invalid category' });
+                    continue;
+                }
+
+                try {
+                    const [existingProducts] = await db.query(
+                        'SELECT id FROM products WHERE name = ? AND slug = ? AND category = ? AND brand = ?',
+                        [name, slug, categoryId, brandId]
+                    );
+                    if (existingProducts.length > 0) {
+                        skippedCount++;
+                        errorLogs.push({
+                            name,
+                            reason: 'Product with same name, slug, category, and brand already exists'
+                        });
+                        continue;
+                    }
+                } catch (err) {
+                    console.error(`Error checking for duplicates for ${name}:`, err);
+                    errorLogs.push({ name, reason: `Duplicate check error: ${err.message}` });
+                    continue;
+                }
+
+                let specifications = [];
+                try {
+                    const specsString = String(normalizedRow.specifications || '').trim();
+                    if (specsString.startsWith('[')) {
+                        specifications = JSON.parse(specsString.replace(/<br\s*\/?>/g, '\n'));
+                    } else if (specsString) {
+                        specifications = specsString.split(',').map(item => item.trim());
+                    }
+                } catch (err) {
+                    errorLogs.push({ name, reason: `Specifications parse error: ${err.message}` });
+                }
+
+                let details = [];
+                try {
+                    let detailsString = String(normalizedRow.details || '').trim();
+                    if (detailsString.startsWith('[')) {
+                        detailsString = detailsString.replace(/<br\s*\/?>/gi, '').replace(/\\"/g, '"').replace(/'/g, '"').replace(/(\w)"(\w)/g, '$1\\"$2');
+                        try {
+                            details = JSON.parse(detailsString);
+                        } catch {
+                            details = detailsString.replace(/,\s*]/g, ']').replace(/,\s*$/, '').replace(/"\s*,\s*"/g, '","').slice(1, -1).split(',').map(i => i.trim().replace(/^"(.*)"$/, '$1'));
+                        }
+                    } else if (detailsString) {
+                        details = [detailsString];
+                    }
+                    details = details.map(d => String(d).replace(/<br\s*\/?>/gi, '\n').replace(/\\"/g, '"').trim());
+                } catch (err) {
+                    errorLogs.push({ name, reason: `Details parse error: ${err.message}` });
+                    details = [];
+                }
+
+                let mainImagePath = '';
+                const additionalImagePaths = [];
+
+                if (normalizedRow.image_path) {
+                    const filename = await downloadImage(normalizedRow.image_path.trim());
+                    if (filename) {
+                        mainImagePath = `Uploads/${filename}`;
+                    }
+                }
+
+                if (normalizedRow.image_paths) {
+                    try {
+                        const paths = Array.isArray(normalizedRow.image_paths)
+                            ? normalizedRow.image_paths
+                            : normalizedRow.image_paths.split(',').map(p => p.trim());
+
+                        const downloadPromises = paths.map(url => downloadImage(url));
+                        const downloadedFiles = await Promise.all(downloadPromises);
+
+                        additionalImagePaths.push(
+                            ...downloadedFiles
+                                .filter(file => file !== null)
+                                .map(file => `Uploads/${file}`)
+                        );
+                    } catch (err) {
+                        errorLogs.push({ name, reason: `Image paths processing error: ${err.message}` });
+                    }
+                }
+
+                productsToInsert.push([
+                    sku,
+                    slug,
+                    categoryId,
+                    normalizedRow.barcode || '',
+                    normalizedRow.buying_price || 0,
+                    normalizedRow.selling_price || 0,
+                    normalizedRow.offer_price || 0,
+                    normalizedRow.tax || 'VAT-1',
+                    brandId,
+                    'Active',
+                    'Yes',
+                    'Enable',
+                    'Yes',
+                    normalizedRow.max_purchase_quantity || 10,
+                    normalizedRow.low_stock_warning || 5,
+                    normalizedRow.unit || 'unit',
+                    normalizedRow.weight || 0,
+                    normalizedRow.tags || '',
+                    normalizedRow.short_description || '',
+                    normalizedRow.description || '',
+                    mainImagePath,
+                    JSON.stringify(additionalImagePaths),
+                    normalizedRow.discount || 0,
+                    JSON.stringify(specifications),
+                    JSON.stringify(details),
+                    name
+                ]);
+
+                insertedCount++;
+            } catch (err) {
+                console.error(`Error processing row:`, err);
+                errorLogs.push({ name: normalizedRow.name || 'Unknown', reason: `Row processing error: ${err.message}` });
+                skippedCount++;
+            }
         }
 
-        let mainImagePath = '';
-        const additionalImagePaths = [];
-
-        if (normalizedRow.image_path) {
-          const filename = await downloadImage(normalizedRow.image_path.trim());
-          if (filename) {
-            mainImagePath = `Uploads/${filename}`;
-          }
-        }
-
-        if (normalizedRow.image_paths) {
-          try {
-            const paths = Array.isArray(normalizedRow.image_paths) 
-              ? normalizedRow.image_paths 
-              : normalizedRow.image_paths.split(',').map(p => p.trim());
-            
-            const downloadPromises = paths.map(url => downloadImage(url));
-            const downloadedFiles = await Promise.all(downloadPromises);
-            
-            additionalImagePaths.push(
-              ...downloadedFiles
-                .filter(file => file !== null)
-                .map(file => `Uploads/${file}`)
-            );
-          } catch (err) {
-            errorLogs.push({ name, reason: `Image paths processing error: ${err.message}` });
-          }
-        }
-
-        productsToInsert.push([
-          sku,
-          slug,
-          categoryId,
-          normalizedRow.barcode || '',
-          normalizedRow.buying_price || 0,
-          normalizedRow.selling_price || 0,
-          normalizedRow.offer_price || 0,
-          normalizedRow.tax || 'VAT-1',
-          brandId,
-          'Active',
-          'Yes',
-          'Enable',
-          'Yes',
-          normalizedRow.max_purchase_quantity || 10,
-          normalizedRow.low_stock_warning || 5,
-          normalizedRow.unit || 'unit',
-          normalizedRow.weight || 0,
-          normalizedRow.tags || '',
-          normalizedRow.short_description || '',
-          normalizedRow.description || '',
-          mainImagePath,
-          JSON.stringify(additionalImagePaths),
-          normalizedRow.discount || 0,
-          JSON.stringify(specifications),
-          JSON.stringify(details),
-          name
-        ]);
-
-        insertedCount++;
-      } catch (err) {
-        console.error(`Error processing row:`, err);
-        errorLogs.push({ name: normalizedRow.name || 'Unknown', reason: `Row processing error: ${err.message}` });
-        skippedCount++;
-      }
-    }
-
-    if (productsToInsert.length > 0) {
-      try {
-        const [insertResult] = await db.query(`
+        if (productsToInsert.length > 0) {
+            try {
+                const [insertResult] = await db.query(`
           INSERT INTO products (
             sku, slug, category, barcode, buying_price, selling_price, offer_price, tax, brand,
             status, can_purchasable, show_stock_out, refundable, max_purchase_quantity, low_stock_warning, unit,
             weight, tags, short_description, description, image_path, image_paths, discount,
             specifications, details, name
           ) VALUES ?`, [productsToInsert]);
-        
-        if (!insertResult || !insertResult.affectedRows) {
-          throw new Error('Failed to insert products');
+
+                if (!insertResult || !insertResult.affectedRows) {
+                    throw new Error('Failed to insert products');
+                }
+            } catch (err) {
+                console.error('Error inserting products:', err);
+                throw err;
+            }
         }
-      } catch (err) {
-        console.error('Error inserting products:', err);
-        throw err;
-      }
+
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            message: 'Excel import completed.',
+            totalRows,
+            inserted: insertedCount,
+            skipped: skippedCount,
+            errors: errorLogs
+        });
+
+    } catch (err) {
+        console.error('❌ Upload Error:', err);
+        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({
+            error: err.message,
+            details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
-
-    fs.unlinkSync(req.file.path);
-
-    res.json({
-      message: 'Excel import completed.',
-      totalRows,
-      inserted: insertedCount,
-      skipped: skippedCount,
-      errors: errorLogs
-    });
-
-  } catch (err) {
-    console.error('❌ Upload Error:', err);
-    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    res.status(500).json({ 
-      error: err.message,
-      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
-  }
 });
 
 // app.post('/api/products/uploadFile', upload.single('file'), async (req, res) => {
