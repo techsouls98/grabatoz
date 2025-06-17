@@ -3038,7 +3038,7 @@ app.post('/api/ratings/dummy', async (req, res) => {
             [productId, name, email, rating, review]
         );
 
-        res.json({ success: true, message: 'Dummy rating added successfully and approved' });
+        res.json({ success: true, message: 'Rating added successfully.' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error adding dummy rating' });
