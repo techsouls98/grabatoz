@@ -2942,48 +2942,48 @@ app.put('/api/products/:id', authenticate, upload.array('images', 4), async (req
 });
 // rating products 
 // API to Submit User Rating
-// app.post('/api/ratings', async (req, res) => {
-//     const { slug, name, email, rating, review } = req.body;
-
-//     try {
-//         const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
-//         if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
-
-//         const productId = productRows[0].id;
-//         await db.query(
-//             `INSERT INTO product_ratings (product_id, name, email, rating, review) VALUES (?, ?, ?, ?, ?)`,
-//             [productId, name, email, rating, review]
-//         );
-
-//         res.json({ success: true, message: 'Review submitted, pending approval' });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error submitting review' });
-//     }
-// });
-
 app.post('/api/ratings', async (req, res) => {
-  const { slug, name, email, rating, review, client_time } = req.body;
+    const { slug, name, email, rating, review } = req.body;
 
-  try {
-    const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
-    if (productRows.length === 0)
-      return res.status(404).json({ message: 'Product not found' });
+    try {
+        const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+        if (productRows.length === 0) return res.status(404).json({ message: 'Product not found' });
 
-    const productId = productRows[0].id;
+        const productId = productRows[0].id;
+        await db.query(
+            `INSERT INTO product_ratings (product_id, name, email, rating, review) VALUES (?, ?, ?, ?, ?)`,
+            [productId, name, email, rating, review]
+        );
 
-    await db.query(
-      `INSERT INTO product_ratings (product_id, name, email, rating, review, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [productId, name, email, rating, review, client_time]
-    );
-
-    res.json({ success: true, message: 'Review submitted successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error submitting review' });
-  }
+        res.json({ success: true, message: 'Review submitted, pending approval' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error submitting review' });
+    }
 });
+
+// app.post('/api/ratings', async (req, res) => {
+//   const { slug, name, email, rating, review, client_time } = req.body;
+
+//   try {
+//     const [productRows] = await db.query('SELECT id FROM products WHERE slug = ?', [slug]);
+//     if (productRows.length === 0)
+//       return res.status(404).json({ message: 'Product not found' });
+
+//     const productId = productRows[0].id;
+
+//     await db.query(
+//       `INSERT INTO product_ratings (product_id, name, email, rating, review, created_at)
+//        VALUES (?, ?, ?, ?, ?, ?)`,
+//       [productId, name, email, rating, review, client_time]
+//     );
+
+//     res.json({ success: true, message: 'Review submitted successfully' });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: 'Error submitting review' });
+//   }
+// });
 //  API to Approve/Reject Rating (Admin) 
 app.put('/api/ratings/:id/approve', async (req, res) => {
     const { id } = req.params;
