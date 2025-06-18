@@ -10135,6 +10135,118 @@ app.delete('/api/customers/:id', async (req, res) => {
 });
 
 
+// Create Blogs Topic
+app.post('/api/blog-topics', upload.single('image'), async (req, res) => {
+    const { topic_name, slug } = req.body;
+    const image = req.file ? `Uploads/${req.file.filename}` : null;
+
+    if (!topic_name || !slug) {
+        return res.status(400).json({ message: 'Topic name and slug are required' });
+    }
+
+    try {
+        await db.query(
+            'INSERT INTO blog_topics (topic_name, slug, image) VALUES (?, ?, ?)',
+            [topic_name, slug, image]
+        );
+        res.json({ success: true, message: 'Topic created' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error creating topic' });
+    }
+});
+// Update Blogs Topic
+app.put('/api/blog-topics/:id', upload.single('image'), async (req, res) => {
+    const { topic_name, slug } = req.body;
+    const { id } = req.params;
+    const newImage = req.file ? `Uploads/${req.file.filename}` : null;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Topic not found' });
+
+        const currentImage = rows[0].image;
+        let updatedImage = currentImage;
+
+        if (newImage && newImage !== currentImage) {
+            updatedImage = newImage;
+            // Delete old image if different
+            if (currentImage && fs.existsSync(currentImage)) {
+                fs.unlinkSync(currentImage);
+            }
+        }
+
+        await db.query(
+            'UPDATE blog_topics SET topic_name = ?, slug = ?, image = ? WHERE id = ?',
+            [topic_name, slug, updatedImage, id]
+        );
+
+        res.json({ success: true, message: 'Topic updated' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating topic' });
+    }
+});
+// Get Blogs Topic by ID
+app.get('/api/blog-topics/id/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Topic not found' });
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching topic' });
+    }
+});
+// Get Blogs Topic by Slug
+app.get('/api/blog-topics/slug/:slug', async (req, res) => {
+    const { slug } = req.params;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_topics WHERE slug = ?', [slug]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Topic not found' });
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching topic' });
+    }
+});
+// Get All Blogs Topics
+app.get('/api/blog-topics', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_topics ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching topics' });
+    }
+});
+// Delete Topic
+app.delete('/api/blog-topics/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Topic not found' });
+
+        const image = rows[0].image;
+        if (image && fs.existsSync(image)) {
+            fs.unlinkSync(image);
+        }
+
+        await db.query('DELETE FROM blog_topics WHERE id = ?', [id]);
+        res.json({ success: true, message: 'Topic deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error deleting topic' });
+    }
+});
+
+
 // Allow large JSON bodies
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
