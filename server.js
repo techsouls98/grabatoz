@@ -3167,6 +3167,82 @@ app.get('/api/ratings', async (req, res) => {
     }
 });
 
+// POST: Create a new call request
+app.post('/api/call-requests', async (req, res) => {
+    const { customer_name, phone_number } = req.body;
+
+    if (!customer_name || !phone_number) {
+        return res.status(400).json({ message: 'Customer name and phone number are required' });
+    }
+
+    try {
+        await db.query(
+            `INSERT INTO call_requests (customer_name, phone_number) VALUES (?, ?)`,
+            [customer_name, phone_number]
+        );
+
+        res.json({ success: true, message: 'Call request submitted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error submitting call request' });
+    }
+});
+// GET: Get all call requests
+app.get('/api/call-requests', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM call_requests ORDER BY created_at DESC');
+        res.json({ success: true, data: rows });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching call requests' });
+    }
+});
+// PUT: Update request_type and description
+app.put('/api/call-requests/:id', async (req, res) => {
+    const { id } = req.params;
+    const { request_type, description } = req.body;
+
+    const validTypes = ['Request a call', 'Call Done', 'Spam Call'];
+    if (!validTypes.includes(request_type)) {
+        return res.status(400).json({ message: 'Invalid request type' });
+    }
+
+    try {
+        const [result] = await db.query(
+            `UPDATE call_requests SET request_type = ?, description = ? WHERE id = ?`,
+            [request_type, description, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Call request not found' });
+        }
+
+        res.json({ success: true, message: 'Call request updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating call request' });
+    }
+});
+// DELETE: Delete a Call Request  
+app.delete('/api/call-requests/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [result] = await db.query(
+            `DELETE FROM call_requests WHERE id = ?`,
+            [id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Call request not found' });
+        }
+
+        res.json({ success: true, message: 'Call request deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error deleting call request' });
+    }
+});
 
 
 
