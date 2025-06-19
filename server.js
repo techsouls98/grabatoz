@@ -10225,7 +10225,7 @@ app.get('/api/blog-topics', async (req, res) => {
         res.status(500).json({ message: 'Error fetching topics' });
     }
 });
-// Delete Topic
+// Delete Topics
 app.delete('/api/blog-topics/:id', async (req, res) => {
     const { id } = req.params;
 
@@ -10245,6 +10245,216 @@ app.delete('/api/blog-topics/:id', async (req, res) => {
         res.status(500).json({ message: 'Error deleting topic' });
     }
 });
+
+// Create Blogs Category
+app.post('/api/blog-categories', upload.single('image'), async (req, res) => {
+    const { category_name, slug, parent_id } = req.body;
+    const image = req.file ? `Uploads/${req.file.filename}` : null;
+
+    if (!category_name || !slug) {
+        return res.status(400).json({ message: 'Category name and slug are required' });
+    }
+
+    try {
+        let level = 1;
+
+        if (parent_id) {
+            const [parentRows] = await db.query('SELECT level FROM blog_categories WHERE id = ?', [parent_id]);
+            if (parentRows.length === 0) return res.status(400).json({ message: 'Parent category not found' });
+            level = parentRows[0].level + 1;
+        }
+
+        await db.query(
+            'INSERT INTO blog_categories (category_name, slug, parent_id, image, level) VALUES (?, ?, ?, ?, ?)',
+            [category_name, slug, parent_id || null, image, level]
+        );
+        res.json({ success: true, message: 'Category created' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error creating category' });
+    }
+});
+// Update Blogs Category
+// app.put('/api/blog-categories/:id', upload.single('image'), async (req, res) => {
+//     const { category_name, slug, parent_id } = req.body;
+//     const { id } = req.params;
+//     const newImage = req.file ? `Uploads/${req.file.filename}` : null;
+
+//     try {
+//         const [rows] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [id]);
+//         if (rows.length === 0) return res.status(404).json({ message: 'Category not found' });
+
+//         const currentImage = rows[0].image;
+//         let updatedImage = currentImage;
+
+//         if (newImage && newImage !== currentImage) {
+//             updatedImage = newImage;
+//             if (currentImage && fs.existsSync(currentImage)) {
+//                 fs.unlinkSync(currentImage);
+//             }
+//         }
+
+//         let level = 1;
+//         if (parent_id) {
+//             const [parentRows] = await db.query('SELECT level FROM blog_categories WHERE id = ?', [parent_id]);
+//             if (parentRows.length === 0) return res.status(400).json({ message: 'Parent category not found' });
+//             level = parentRows[0].level + 1;
+//         }
+
+//         await db.query(
+//             'UPDATE blog_categories SET category_name = ?, slug = ?, parent_id = ?, image = ?, level = ? WHERE id = ?',
+//             [category_name, slug, parent_id || null, updatedImage, level, id]
+//         );
+
+//         res.json({ success: true, message: 'Category updated' });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error updating category' });
+//     }
+// });
+app.put('/api/blog-categories/:id', upload.single('image'), async (req, res) => {
+    const { category_name, slug, parent_id } = req.body;
+    const { id } = req.params;
+    const newImage = req.file ? `Uploads/${req.file.filename}` : null;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Category not found' });
+
+        const currentImage = rows[0].image;
+        let updatedImage = currentImage;
+
+        if (newImage && newImage !== currentImage) {
+            updatedImage = newImage;
+            if (currentImage && fs.existsSync(currentImage)) {
+                fs.unlinkSync(currentImage);
+            }
+        }
+
+        // Check for children
+        const [children] = await db.query('SELECT COUNT(*) AS count FROM blog_categories WHERE parent_id = ?', [id]);
+        if (children[0].count > 0 && (!parent_id || parseInt(parent_id) !== rows[0].parent_id)) {
+            return res.status(400).json({
+                message: 'This category has child categories. Please move or delete them before updating the parent.'
+            });
+        }
+
+        // Determine level
+        let level = 1;
+        const parentIdInt = parseInt(parent_id, 10);
+        if (!isNaN(parentIdInt)) {
+            const [parentRows] = await db.query('SELECT level FROM blog_categories WHERE id = ?', [parentIdInt]);
+            if (parentRows.length === 0) return res.status(400).json({ message: 'Parent category not found' });
+            level = parentRows[0].level + 1;
+        }
+
+        // Update category
+        await db.query(
+            'UPDATE blog_categories SET category_name = ?, slug = ?, parent_id = ?, image = ?, level = ? WHERE id = ?',
+            [category_name, slug, isNaN(parentIdInt) ? null : parentIdInt, updatedImage, level, id]
+        );
+
+        res.json({ success: true, message: 'Category updated' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating category' });
+    }
+});
+// Get Blogs Category by ID
+app.get('/api/blog-categories/id/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Category not found' });
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching category' });
+    }
+});
+// Get Blogs Category by Slug
+app.get('/api/blog-categories/slug/:slug', async (req, res) => {
+    const { slug } = req.params;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_categories WHERE slug = ?', [slug]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Category not found' });
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching category' });
+    }
+});
+// Get All Category Topics
+app.get('/api/blog-categories', async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT bc.*, parent.category_name AS parent_name
+            FROM blog_categories bc
+            LEFT JOIN blog_categories parent ON bc.parent_id = parent.id
+            ORDER BY bc.created_at DESC
+        `);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching categories' });
+    }
+});
+// Delete Category
+// app.delete('/api/blog-categories/:id', async (req, res) => {
+//     const { id } = req.params;
+
+//     try {
+//         const [rows] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [id]);
+//         if (rows.length === 0) return res.status(404).json({ message: 'Category not found' });
+
+//         const image = rows[0].image;
+//         if (image && fs.existsSync(image)) {
+//             fs.unlinkSync(image);
+//         }
+
+//         await db.query('DELETE FROM blog_categories WHERE id = ?', [id]);
+//         res.json({ success: true, message: 'Category deleted' });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error deleting category' });
+//     }
+// });
+app.delete('/api/blog-categories/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Category not found' });
+
+        // Check for children
+        const [children] = await db.query('SELECT COUNT(*) AS count FROM blog_categories WHERE parent_id = ?', [id]);
+        if (children[0].count > 0) {
+            return res.status(400).json({
+                message: 'This category has child categories. Please delete or reassign them first.'
+            });
+        }
+
+        // Delete image if exists
+        const image = rows[0].image;
+        if (image && fs.existsSync(image)) {
+            fs.unlinkSync(image);
+        }
+
+        await db.query('DELETE FROM blog_categories WHERE id = ?', [id]);
+        res.json({ success: true, message: 'Category deleted' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error deleting category' });
+    }
+});
+
+
 
 
 // Allow large JSON bodies
