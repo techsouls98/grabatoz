@@ -10546,6 +10546,136 @@ app.delete('/api/blogs/:id', async (req, res) => {
     }
 });
 
+// blogs ratings 
+// Admin Adds Dummy Rating for Blog Post 
+app.post('/api/blog-ratings/dummy', async (req, res) => {
+    const { slug, name, email, rating, review } = req.body;
+
+    try {
+        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+
+        const blogId = blogRows[0].id;
+
+        // Add the dummy rating
+        await db.query(
+            `INSERT INTO blog_ratings (blog_id, name, email, rating, review, approved)
+             VALUES (?, ?, ?, ?, ?, 'approved')`,
+            [blogId, name, email, rating, review]
+        );
+
+        res.json({ success: true, message: 'Rating added successfully.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error adding dummy rating' });
+    }
+});
+// create blog 
+app.post('/api/blog-ratings', async (req, res) => {
+    const { slug, name, email, rating, review } = req.body;
+
+    try {
+        // Check if the blog exists based on the slug
+        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+
+        const blogId = blogRows[0].id;
+
+        // Insert the rating and review
+        await db.query(
+            `INSERT INTO blog_ratings (blog_id, name, email, rating, review) VALUES (?, ?, ?, ?, ?)`,
+            [blogId, name, email, rating, review]
+        );
+
+        res.json({ success: true, message: 'Review submitted, pending approval' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error submitting review' });
+    }
+});
+// update blog 
+app.put('/api/blog-ratings/:id/approve', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'approved' or 'rejected'
+
+    try {
+        await db.query(`UPDATE blog_ratings SET approved = ? WHERE id = ?`, [status, id]);
+        res.json({ success: true, message: `Review ${status}` });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating review status' });
+    }
+});
+// Get Approved Ratings for a Blog Post 
+app.get('/api/blog-ratings/:slug', async (req, res) => {
+    const { slug } = req.params;
+
+    try {
+        // Get blog post ID based on slug
+        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+
+        const blogId = blogRows[0].id;
+
+        // Get the approved ratings
+        const [ratings] = await db.query(
+            `SELECT name, rating, review, created_at FROM blog_ratings WHERE blog_id = ? AND approved = 'approved' ORDER BY created_at DESC`,
+            [blogId]
+        );
+
+        res.json({ success: true, ratings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching reviews' });
+    }
+});
+// Update Rating for Blog Post 
+app.put('/api/blog-ratings/:id', async (req, res) => {
+    const { id } = req.params;
+    const { slug, name, email, rating, review, approved } = req.body;
+
+    try {
+        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+
+        const blogId = blogRows[0].id;
+
+        const [ratingRows] = await db.query('SELECT * FROM blog_ratings WHERE id = ?', [id]);
+        if (ratingRows.length === 0) return res.status(404).json({ message: 'Rating not found' });
+
+        // Update the rating
+        await db.query(
+            `UPDATE blog_ratings SET name = ?, email = ?, rating = ?, review = ?, approved = ?, blog_id = ? WHERE id = ?`,
+            [name, email, rating, review, approved, blogId, id]
+        );
+
+        res.json({ success: true, message: 'Rating updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating rating' });
+    }
+});
+// Delete Rating for Blog Post 
+app.delete('/api/blog-ratings/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [ratingRows] = await db.query('SELECT * FROM blog_ratings WHERE id = ?', [id]);
+        if (ratingRows.length === 0) return res.status(404).json({ message: 'Rating not found' });
+
+        // Delete the rating
+        await db.query('DELETE FROM blog_ratings WHERE id = ?', [id]);
+
+        res.json({ success: true, message: 'Rating deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error deleting rating' });
+    }
+});
+
+
+
+
 
 
 
