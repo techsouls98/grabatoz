@@ -10606,6 +10606,23 @@ app.put('/api/blog-ratings/:id/approve', async (req, res) => {
         res.status(500).json({ message: 'Error updating review status' });
     }
 });
+// GET API to Fetch All Ratings (Approved, Pending, Rejected for All Blog Posts)
+app.get('/api/blog-ratings', async (req, res) => {
+    try {
+        // Fetch all ratings (approved, pending, rejected) for all blog posts
+        const [ratings] = await db.query(
+            `SELECT r.id, r.blog_id, r.name, r.email, r.rating, r.review, r.approved, r.created_at, b.slug
+             FROM blog_ratings r
+             JOIN blogs b ON r.blog_id = b.id
+             ORDER BY r.created_at DESC`
+        );
+
+        res.json({ success: true, ratings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching ratings' });
+    }
+});
 // Get Approved Ratings for a Blog Post 
 app.get('/api/blog-ratings/:slug', async (req, res) => {
     const { slug } = req.params;
