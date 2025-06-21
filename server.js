@@ -10407,144 +10407,144 @@ app.delete('/api/blog-categories/:id', async (req, res) => {
     }
 });
 
-//  Create Blog API 
-app.post('/api/blogs', upload.single('image'), async (req, res) => {
-    const {
-        blog_name, slug, status, parent_category_id, child_category_id,
-        topic_id, blog_html, post_title, meta_description,
-        post_by, read_minutes, comments
-    } = req.body;
+// //  Create Blog API 
+// app.post('/api/blogs', upload.single('image'), async (req, res) => {
+//     const {
+//         blog_name, slug, status, parent_category_id, child_category_id,
+//         topic_id, blog_html, post_title, meta_description,
+//         post_by, read_minutes, comments
+//     } = req.body;
 
-    const image = req.file ? `Uploads/${req.file.filename}` : null;
-    const post_date = status === 'Live' ? new Date() : null;
+//     const image = req.file ? `Uploads/${req.file.filename}` : null;
+//     const post_date = status === 'Live' ? new Date() : null;
 
-    try {
-        await db.query(`
-            INSERT INTO blogs (
-                blog_name, slug, status, parent_category_id, child_category_id,
-                topic_id, blog_html, post_title, meta_description,
-                post_by, read_minutes, comments, post_date, image
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-            blog_name, slug, status, parent_category_id || null, child_category_id || null,
-            topic_id || null, blog_html, post_title, meta_description,
-            post_by || null, read_minutes || null, comments || null,
-            post_date, image
-        ]);
+//     try {
+//         await db.query(`
+//             INSERT INTO blogs (
+//                 blog_name, slug, status, parent_category_id, child_category_id,
+//                 topic_id, blog_html, post_title, meta_description,
+//                 post_by, read_minutes, comments, post_date, image
+//             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//         `, [
+//             blog_name, slug, status, parent_category_id || null, child_category_id || null,
+//             topic_id || null, blog_html, post_title, meta_description,
+//             post_by || null, read_minutes || null, comments || null,
+//             post_date, image
+//         ]);
 
-        res.json({ success: true, message: 'Blog created successfully' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error creating blog' });
-    }
-});
-//  Update Blog API (remove old image if replaced)
-app.put('/api/blogs/:id', upload.single('image'), async (req, res) => {
-    const {
-        blog_name, slug, status, parent_category_id, child_category_id,
-        topic_id, blog_html, post_title, meta_description,
-        post_by, read_minutes, comments
-    } = req.body;
+//         res.json({ success: true, message: 'Blog created successfully' });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error creating blog' });
+//     }
+// });
+// //  Update Blog API (remove old image if replaced)
+// app.put('/api/blogs/:id', upload.single('image'), async (req, res) => {
+//     const {
+//         blog_name, slug, status, parent_category_id, child_category_id,
+//         topic_id, blog_html, post_title, meta_description,
+//         post_by, read_minutes, comments
+//     } = req.body;
 
-    const id = req.params.id;
+//     const id = req.params.id;
 
-    try {
-        const [existing] = await db.query('SELECT * FROM blogs WHERE id = ?', [id]);
-        if (existing.length === 0) return res.status(404).json({ message: 'Blog not found' });
+//     try {
+//         const [existing] = await db.query('SELECT * FROM blogs WHERE id = ?', [id]);
+//         if (existing.length === 0) return res.status(404).json({ message: 'Blog not found' });
 
-        let image = existing[0].image;
+//         let image = existing[0].image;
 
-        if (req.file) {
-            if (image && fs.existsSync(image)) fs.unlinkSync(image);
-            image = `Uploads/${req.file.filename}`;
-        }
+//         if (req.file) {
+//             if (image && fs.existsSync(image)) fs.unlinkSync(image);
+//             image = `Uploads/${req.file.filename}`;
+//         }
 
-        const post_date = (status === 'Live' && !existing[0].post_date)
-            ? new Date()
-            : existing[0].post_date;
+//         const post_date = (status === 'Live' && !existing[0].post_date)
+//             ? new Date()
+//             : existing[0].post_date;
 
-        await db.query(`
-            UPDATE blogs SET
-                blog_name = ?, slug = ?, status = ?, parent_category_id = ?,
-                child_category_id = ?, topic_id = ?, blog_html = ?,
-                post_title = ?, meta_description = ?, post_by = ?,
-                read_minutes = ?, comments = ?, post_date = ?, image = ?
-            WHERE id = ?
-        `, [
-            blog_name, slug, status, parent_category_id || null, child_category_id || null,
-            topic_id || null, blog_html, post_title, meta_description,
-            post_by || null, read_minutes || null, comments || null,
-            post_date, image, id
-        ]);
+//         await db.query(`
+//             UPDATE blogs SET
+//                 blog_name = ?, slug = ?, status = ?, parent_category_id = ?,
+//                 child_category_id = ?, topic_id = ?, blog_html = ?,
+//                 post_title = ?, meta_description = ?, post_by = ?,
+//                 read_minutes = ?, comments = ?, post_date = ?, image = ?
+//             WHERE id = ?
+//         `, [
+//             blog_name, slug, status, parent_category_id || null, child_category_id || null,
+//             topic_id || null, blog_html, post_title, meta_description,
+//             post_by || null, read_minutes || null, comments || null,
+//             post_date, image, id
+//         ]);
 
-        res.json({ success: true, message: 'Blog updated successfully' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error updating blog' });
-    }
-});
-//  Get All Blogs 
-app.get('/api/blogs', async (req, res) => {
-    try {
-        const [rows] = await db.query(`
-            SELECT b.*, 
-                   pc.category_name AS parent_category,
-                   cc.category_name AS child_category,
-                   t.topic_name,
-                   u.name AS post_by_user
-            FROM blogs b
-            LEFT JOIN blog_categories pc ON b.parent_category_id = pc.id
-            LEFT JOIN blog_categories cc ON b.child_category_id = cc.id
-            LEFT JOIN blog_topics t ON b.topic_id = t.id
-            LEFT JOIN users u ON b.post_by = u.id
-            ORDER BY b.id DESC
-        `);
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error fetching blogs' });
-    }
-});
-// Get Blog by ID 
-app.get('/api/blogs/:id', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM blogs WHERE id = ?', [req.params.id]);
-        if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error fetching blog' });
-    }
-});
-// Get Blog by Slug 
-app.get('/api/blogs/slug/:slug', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM blogs WHERE slug = ?', [req.params.slug]);
-        if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error fetching blog' });
-    }
-});
-// Delete Blog 
-app.delete('/api/blogs/:id', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM blogs WHERE id = ?', [req.params.id]);
-        if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+//         res.json({ success: true, message: 'Blog updated successfully' });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error updating blog' });
+//     }
+// });
+// //  Get All Blogs 
+// app.get('/api/blogs', async (req, res) => {
+//     try {
+//         const [rows] = await db.query(`
+//             SELECT b.*, 
+//                    pc.category_name AS parent_category,
+//                    cc.category_name AS child_category,
+//                    t.topic_name,
+//                    u.name AS post_by_user
+//             FROM blogs b
+//             LEFT JOIN blog_categories pc ON b.parent_category_id = pc.id
+//             LEFT JOIN blog_categories cc ON b.child_category_id = cc.id
+//             LEFT JOIN blog_topics t ON b.topic_id = t.id
+//             LEFT JOIN users u ON b.post_by = u.id
+//             ORDER BY b.id DESC
+//         `);
+//         res.json(rows);
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error fetching blogs' });
+//     }
+// });
+// // Get Blog by ID 
+// app.get('/api/blogs/:id', async (req, res) => {
+//     try {
+//         const [rows] = await db.query('SELECT * FROM blogs WHERE id = ?', [req.params.id]);
+//         if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+//         res.json(rows[0]);
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error fetching blog' });
+//     }
+// });
+// // Get Blog by Slug 
+// app.get('/api/blogs/slug/:slug', async (req, res) => {
+//     try {
+//         const [rows] = await db.query('SELECT * FROM blogs WHERE slug = ?', [req.params.slug]);
+//         if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+//         res.json(rows[0]);
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error fetching blog' });
+//     }
+// });
+// // Delete Blog 
+// app.delete('/api/blogs/:id', async (req, res) => {
+//     try {
+//         const [rows] = await db.query('SELECT * FROM blogs WHERE id = ?', [req.params.id]);
+//         if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
 
-        const { image } = rows[0];
-        if (image && fs.existsSync(image)) {
-            fs.unlinkSync(image);
-        }
+//         const { image } = rows[0];
+//         if (image && fs.existsSync(image)) {
+//             fs.unlinkSync(image);
+//         }
 
-        await db.query('DELETE FROM blogs WHERE id = ?', [req.params.id]);
-        res.json({ success: true, message: 'Blog deleted successfully' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error deleting blog' });
-    }
-});
+//         await db.query('DELETE FROM blogs WHERE id = ?', [req.params.id]);
+//         res.json({ success: true, message: 'Blog deleted successfully' });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error deleting blog' });
+//     }
+// });
 
 // blogs ratings 
 // Admin Adds Dummy Rating for Blog Post 
@@ -10690,6 +10690,162 @@ app.delete('/api/blog-ratings/:id', async (req, res) => {
     }
 });
 
+// Blogs 
+app.post('/api/blogs', upload.array('images', 4), async (req, res) => {
+    const {
+        blog_name, status, parent_category_id, child_category_id,
+        topic_id, blog_html, post_title, meta_description,
+        post_by, read_minutes, comments
+    } = req.body;
+
+    const image = req.files[0] ? `Uploads/${req.files[0].filename}` : null;
+    const image_1 = req.files[1] ? `Uploads/${req.files[1].filename}` : null;
+    const image_2 = req.files[2] ? `Uploads/${req.files[2].filename}` : null;
+    const image_3 = req.files[3] ? `Uploads/${req.files[3].filename}` : null;
+    
+    // Slug generation logic (auto-generated from blog name)
+    let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    
+    const post_date = status === 'Live' ? new Date() : null;
+
+    try {
+        await db.query(`
+            INSERT INTO blogs (
+                blog_name, slug, status, parent_category_id, child_category_id,
+                topic_id, blog_html, post_title, meta_description,
+                post_by, read_minutes, comments, post_date, image, image_1, image_2, image_3
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            blog_name, slug, status, parent_category_id || null, child_category_id || null,
+            topic_id || null, blog_html, post_title, meta_description,
+            post_by || null, read_minutes || null, comments || null,
+            post_date, image, image_1, image_2, image_3
+        ]);
+
+        res.json({ success: true, message: 'Blog created successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error creating blog' });
+    }
+});
+app.put('/api/blogs/:id', upload.array('images', 4), async (req, res) => {
+    const {
+        blog_name, slug, status, parent_category_id, child_category_id,
+        topic_id, blog_html, post_title, meta_description,
+        post_by, read_minutes, comments
+    } = req.body;
+
+    const id = req.params.id;
+
+    try {
+        const [existing] = await db.query('SELECT * FROM blogs WHERE id = ?', [id]);
+        if (existing.length === 0) return res.status(404).json({ message: 'Blog not found' });
+
+        let image = existing[0].image;
+        let image_1 = existing[0].image_1;
+        let image_2 = existing[0].image_2;
+        let image_3 = existing[0].image_3;
+
+        // Handle file uploads for images
+        if (req.files[0]) {
+            if (image && fs.existsSync(image)) fs.unlinkSync(image);
+            image = `Uploads/${req.files[0].filename}`;
+        }
+        if (req.files[1]) {
+            if (image_1 && fs.existsSync(image_1)) fs.unlinkSync(image_1);
+            image_1 = `Uploads/${req.files[1].filename}`;
+        }
+        if (req.files[2]) {
+            if (image_2 && fs.existsSync(image_2)) fs.unlinkSync(image_2);
+            image_2 = `Uploads/${req.files[2].filename}`;
+        }
+        if (req.files[3]) {
+            if (image_3 && fs.existsSync(image_3)) fs.unlinkSync(image_3);
+            image_3 = `Uploads/${req.files[3].filename}`;
+        }
+
+        const post_date = (status === 'Live' && !existing[0].post_date)
+            ? new Date()
+            : existing[0].post_date;
+
+        await db.query(`
+            UPDATE blogs SET
+                blog_name = ?, slug = ?, status = ?, parent_category_id = ?,
+                child_category_id = ?, topic_id = ?, blog_html = ?,
+                post_title = ?, meta_description = ?, post_by = ?,
+                read_minutes = ?, comments = ?, post_date = ?, image = ?, image_1 = ?, image_2 = ?, image_3 = ?
+            WHERE id = ?
+        `, [
+            blog_name, slug, status, parent_category_id || null, child_category_id || null,
+            topic_id || null, blog_html, post_title, meta_description,
+            post_by || null, read_minutes || null, comments || null,
+            post_date, image, image_1, image_2, image_3, id
+        ]);
+
+        res.json({ success: true, message: 'Blog updated successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error updating blog' });
+    }
+});
+app.get('/api/blogs', async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT b.*, 
+                   pc.category_name AS parent_category,
+                   cc.category_name AS child_category,
+                   t.topic_name,
+                   u.name AS post_by_user
+            FROM blogs b
+            LEFT JOIN blog_categories pc ON b.parent_category_id = pc.id
+            LEFT JOIN blog_categories cc ON b.child_category_id = cc.id
+            LEFT JOIN blog_topics t ON b.topic_id = t.id
+            LEFT JOIN users u ON b.post_by = u.id
+            ORDER BY b.id DESC
+        `);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching blogs' });
+    }
+});
+app.get('/api/blogs/:id', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM blogs WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching blog' });
+    }
+});
+app.get('/api/blogs/slug/:slug', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM blogs WHERE slug = ?', [req.params.slug]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching blog' });
+    }
+});
+app.delete('/api/blogs/:id', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM blogs WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Blog not found' });
+
+        const { image, image_1, image_2, image_3 } = rows[0];
+        [image, image_1, image_2, image_3].forEach(img => {
+            if (img && fs.existsSync(img)) fs.unlinkSync(img);
+        });
+
+        await db.query('DELETE FROM blogs WHERE id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Blog deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error deleting blog' });
+    }
+});
 
 
 
