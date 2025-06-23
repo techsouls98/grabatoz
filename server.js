@@ -10694,113 +10694,102 @@ app.delete('/api/blog-ratings/:id', async (req, res) => {
 // app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
 //     const {
 //         blog_name, status, parent_category_id, child_category_id,
-//         topic_id, meta_description, post_by, read_minutes, comments,
-//         post_titles, descriptions
+//         topic_id, blog_html, post_title, meta_description,
+//         post_by, read_minutes, comments
 //     } = req.body;
-
-//     // Parse image captions if sent (assuming sent as JSON string or array)
-//     const image_captions = req.body.image_captions ? JSON.parse(req.body.image_captions) : [];
 
 //     // Main image stored separately
 //     const mainImage = req.files[0] ? `Uploads/${req.files[0].filename}` : null;
 
-//     // Collect all other images into an array (excluding the first one if it's the main image)
-//     const additionalImages = req.files.slice(mainImage ? 1 : 0).map(file => `Uploads/${file.filename}`);
+//     // Collect all other images into an array
+//     const additionalImages = req.files.slice(1).map(file => `Uploads/${file.filename}`);
 
 //     // Slug generation logic (auto-generated from blog name)
 //     let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
+//     // Fetch categories and topics
 //     try {
-//         // Validate categories
 //         const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
-//         if (categories.length === 0) return res.status(400).json({ message: 'Invalid parent category' });
+//         if (categories.length === 0) return res.status(400).json({ message: 'Invalid category' });
 
-//         if (child_category_id) {
-//             const [childCategories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
-//             if (childCategories.length === 0) return res.status(400).json({ message: 'Invalid child category' });
-//         }
-
-//         // Validate topics
 //         const [topics] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [topic_id]);
 //         if (topics.length === 0) return res.status(400).json({ message: 'Invalid topic' });
 
 //         const post_date = status === 'Live' ? new Date() : null;
 
-//         // Insert into the database with JSON arrays for multiple sections
+//         // Insert into the database
 //         await db.query(`
 //             INSERT INTO blogs (
 //                 blog_name, slug, status, parent_category_id, child_category_id,
-//                 topic_id, meta_description, post_by, read_minutes, comments,
-//                 post_date, image, images, image_captions, post_titles, descriptions
-//             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//                 topic_id, blog_html, post_title, meta_description,
+//                 post_by, read_minutes, comments, post_date, image, images
+//             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 //         `, [
 //             blog_name, slug, status, parent_category_id || null, child_category_id || null,
-//             topic_id || null, meta_description || null, post_by || null, read_minutes || null,
-//             comments || null, post_date, mainImage, JSON.stringify(additionalImages),
-//             JSON.stringify(image_captions), JSON.stringify(post_titles), JSON.stringify(descriptions)
+//             topic_id || null, blog_html, post_title, meta_description,
+//             post_by || null, read_minutes || null, comments || null,
+//             post_date, mainImage, JSON.stringify(additionalImages) // Store additional images as JSON string
 //         ]);
 
 //         res.json({ success: true, message: 'Blog created successfully' });
 //     } catch (err) {
 //         console.error(err);
-//         res.status(500).json({ message: 'Error creating blog', error: err.message });
+//         res.status(500).json({ message: 'Error creating blog' });
 //     }
 // });
 app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
+    const {
+        blog_name, status, parent_category_id, child_category_id,
+        topic_id, meta_description, post_by, read_minutes, comments,
+        post_titles, descriptions
+    } = req.body;
+
+    // Parse image captions if sent (assuming sent as JSON string or array)
+    const image_captions = req.body.image_captions ? JSON.parse(req.body.image_captions) : [];
+
+    // Main image stored separately
+    const mainImage = req.files[0] ? `Uploads/${req.files[0].filename}` : null;
+
+    // Collect all other images into an array (excluding the first one if it's the main image)
+    const additionalImages = req.files.slice(mainImage ? 1 : 0).map(file => `Uploads/${file.filename}`);
+
+    // Slug generation logic (auto-generated from blog name)
+    let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+
     try {
-        const {
-            blog_name, slug, status,
-            parent_category_id, child_category_id,
-            topic_id, read_minutes, post_by,
-            post_title, blog_html, meta_description
-        } = req.body;
+        // Validate categories
+        const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
+        if (categories.length === 0) return res.status(400).json({ message: 'Invalid parent category' });
 
-        // Validate required fields
-        if (!blog_name || !slug || !status) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        if (child_category_id) {
+            const [childCategories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
+            if (childCategories.length === 0) return res.status(400).json({ message: 'Invalid child category' });
         }
 
-        // Parse JSON strings with proper error handling
-        let titles = [], descriptions = [], captions = [];
-        try {
-            titles = post_title ? JSON.parse(post_title) : [];
-            descriptions = blog_html ? JSON.parse(blog_html) : [];
-            captions = meta_description ? JSON.parse(meta_description) : [];
-        } catch (e) {
-            return res.status(400).json({ error: 'Invalid JSON in content fields' });
-        }
+        // Validate topics
+        const [topics] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [topic_id]);
+        if (topics.length === 0) return res.status(400).json({ message: 'Invalid topic' });
 
-        // Handle file uploads
-        const files = req.files || [];
-        const mainImage = files[0] ? `uploads/${files[0].filename}` : null;
-        const additionalImages = files.slice(1).map(file => `uploads/${file.filename}`);
+        const post_date = status === 'Live' ? new Date() : null;
 
-        // Database operation
+        // Insert into the database with JSON arrays for multiple sections
         await db.query(`
             INSERT INTO blogs (
-                blog_name, slug, status,
-                parent_category_id, child_category_id,
-                topic_id, read_minutes, post_by,
-                post_title, blog_html, meta_description,
-                image, images, post_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                blog_name, slug, status, parent_category_id, child_category_id,
+                topic_id, meta_description, post_by, read_minutes, comments,
+                post_date, image, images, image_captions, post_titles, descriptions
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            blog_name, slug, status,
-            parent_category_id || null, child_category_id || null,
-            topic_id || null, read_minutes || null, post_by || null,
-            JSON.stringify(titles), JSON.stringify(descriptions), JSON.stringify(captions),
-            mainImage, JSON.stringify(additionalImages),
-            status === 'Live' ? new Date() : null
+            blog_name, slug, status, parent_category_id || null, child_category_id || null,
+            topic_id || null, meta_description || null, post_by || null, read_minutes || null,
+            comments || null, post_date, mainImage, JSON.stringify(additionalImages),
+            JSON.stringify(image_captions), JSON.stringify(post_titles), JSON.stringify(descriptions)
         ]);
 
         res.json({ success: true, message: 'Blog created successfully' });
-    } catch (error) {
-        console.error('Server error:', error);
-        // Ensure we always return JSON, even for errors
-        res.status(500).json({ 
-            error: 'Internal server error',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error creating blog', error: err.message });
     }
 });
 //  Update Blog API (PUT) 
