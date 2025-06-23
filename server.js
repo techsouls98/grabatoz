@@ -10751,18 +10751,19 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
         const {
             blog_name, slug, status,
             parent_category_id, child_category_id,
-            topic_id, read_minutes, post_by
+            topic_id, read_minutes, post_by,
+            post_titles, descriptions, image_captions
         } = req.body;
 
         // Parse array fields
-        const post_titles = req.body.post_titles ? JSON.parse(req.body.post_titles) : [];
-        const descriptions = req.body.descriptions ? JSON.parse(req.body.descriptions) : [];
-        const image_captions = req.body.image_captions ? JSON.parse(req.body.image_captions) : [];
+        const titles = post_titles ? JSON.parse(post_titles) : [];
+        const descs = descriptions ? JSON.parse(descriptions) : [];
+        const captions = image_captions ? JSON.parse(image_captions) : [];
 
         // Handle images
-        const images = req.files.map(file => `uploads/${file.filename}`);
-        const mainImage = images[0] || null;
-        const additionalImages = images.slice(1) || [];
+        const files = req.files || [];
+        const mainImage = files[0] ? `uploads/${files[0].filename}` : null;
+        const additionalImages = files.slice(1).map(file => `uploads/${file.filename}`);
 
         // Insert into database
         await db.query(`
@@ -10777,7 +10778,7 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
             blog_name, slug, status,
             parent_category_id || null, child_category_id || null,
             topic_id || null, read_minutes || null, post_by || null,
-            JSON.stringify(post_titles), JSON.stringify(descriptions), JSON.stringify(image_captions),
+            JSON.stringify(titles), JSON.stringify(descs), JSON.stringify(captions),
             mainImage, JSON.stringify(additionalImages),
             status === 'Live' ? new Date() : null
         ]);
