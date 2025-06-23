@@ -10178,7 +10178,50 @@ app.delete('/api/customers/:id', async (req, res) => {
         res.status(500).json({ message: 'Error deleting customer' });
     }
 });
+app.get('/api/orderfetchbyidonreciept/:orderId', async (req, res) => {
+    const orderId = req.params.orderId;
 
+    try {
+        // Fetch order from database
+        const [orders] = await db.query('SELECT * FROM onlineorders WHERE order_id = ?', [orderId]);
+
+        if (!orders.length) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const order = orders[0];
+
+        // Parse shipping address if it's stored as JSON
+        try {
+            const parsed = JSON.parse(order.shipping_address);
+
+            order.shipping_address = [
+                parsed.address,
+                parsed.city,
+                parsed.state,
+                parsed.country,
+                parsed.zip || parsed.zip_code || ""
+            ].filter(Boolean).join(', ');
+
+        } catch (err) {
+            console.error('❌ Failed to parse address for order:', order.order_id, err);
+            order.shipping_address = 'Invalid Address Data';
+        }
+
+        // Set display ID (customer ID or guest ID)
+        order.display_id = order.customer_id || order.guest_id || 'N/A';
+
+        // Return the order data
+        res.status(200).json(order);
+
+    } catch (error) {
+        console.error('❌ Failed to fetch order:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch order', 
+            error: error.message 
+        });
+    }
+});
 
 // Create Blogs Topic
 app.post('/api/blog-topics', upload.single('image'), async (req, res) => {
