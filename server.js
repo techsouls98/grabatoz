@@ -10738,28 +10738,6 @@ app.delete('/api/blog-ratings/:id', async (req, res) => {
 //     }
 // });
 // Get all parent categories (where parent_id is null)
-app.get('/api/parent-categories', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM product_categories WHERE parent_id IS NULL');
-        res.json(rows);
-    } catch (err) {
-        console.error('Error fetching parent categories:', err);
-        res.status(500).json({ message: 'Error fetching parent categories', error: err.message });
-    }
-});
-
-// Get child categories by parent_id
-app.get('/api/child-categories/:parent_id', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT * FROM product_categories WHERE parent_id = ?', [req.params.parent_id]);
-        res.json(rows);
-    } catch (err) {
-        console.error('Error fetching child categories:', err);
-        res.status(500).json({ message: 'Error fetching child categories', error: err.message });
-    }
-});
-
-// Updated Blog POST API
 app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
     try {
         const {
@@ -10772,6 +10750,7 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
             return res.status(400).json({ message: 'Blog name is required' });
         }
 
+        // Handle image captions and post titles
         let image_captions = [];
         let parsedPostTitles = [];
         let parsedDescriptions = [];
@@ -10784,9 +10763,11 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
             return res.status(400).json({ message: 'Invalid JSON format in request body' });
         }
 
+        // Handle file uploads
         const mainImage = req.files && req.files[0] ? `Uploads/${req.files[0].filename}` : null;
         const additionalImages = req.files ? req.files.slice(mainImage ? 1 : 0).map(file => `Uploads/${file.filename}`) : [];
 
+        // Generate slug
         let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
         // Validate categories
@@ -10807,6 +10788,7 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
 
         const post_date = status === 'Live' ? new Date() : null;
 
+        // Insert the blog into the database
         await db.query(`
             INSERT INTO blogs (
                 blog_name, slug, status, parent_category_id, child_category_id,
@@ -10826,7 +10808,6 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
         res.status(500).json({ message: 'Error creating blog', error: err.message });
     }
 });
-
 // Updated Blog PUT API
 app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
     try {
@@ -10846,26 +10827,17 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
 
         let image = existing[0].image;
         let additionalImages = [];
-        
-        try {
-            additionalImages = JSON.parse(existing[0].images || '[]');
-        } catch (e) {
-            additionalImages = [];
-        }
 
         // Handle file uploads
         if (req.files && req.files.length > 0) {
-            // Delete old main image if new one is uploaded
             if (req.files[0]) {
                 if (image && fs.existsSync(image)) {
                     fs.unlinkSync(image);
                 }
                 image = `Uploads/${req.files[0].filename}`;
             }
-            
-            // Handle additional images
+
             if (req.files.length > 1) {
-                // Delete old additional images
                 additionalImages.forEach(img => {
                     if (img && fs.existsSync(img)) {
                         fs.unlinkSync(img);
@@ -10901,6 +10873,7 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             ? new Date()
             : existing[0].post_date;
 
+        // Handle image captions and post titles
         let image_captions = [];
         let parsedPostTitles = [];
         let parsedDescriptions = [];
@@ -10913,6 +10886,7 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             return res.status(400).json({ message: 'Invalid JSON format in request body' });
         }
 
+        // Update the blog data in the database
         await db.query(`
             UPDATE blogs SET
                 blog_name = ?, slug = ?, status = ?, parent_category_id = ?,
