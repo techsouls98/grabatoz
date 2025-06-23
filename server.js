@@ -10770,16 +10770,15 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
         // Generate slug
         let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
-        // Validate categories (use correct table name)
         if (parent_category_id) {
-            const [categories] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [parent_category_id]);
-            if (categories.length === 0) return res.status(400).json({ message: 'Invalid parent category' });
-        }
+    const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
+    if (categories.length === 0) return res.status(400).json({ message: 'Invalid parent category' });
+}
 
-        if (child_category_id) {
-            const [childCategories] = await db.query('SELECT * FROM blog_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
-            if (childCategories.length === 0) return res.status(400).json({ message: 'Invalid child category' });
-        }
+if (child_category_id && parent_category_id) {
+    const [childCategories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
+    if (childCategories.length === 0) return res.status(400).json({ message: 'Invalid child category' });
+}
 
         // Validate topics
         if (topic_id) {
@@ -10860,18 +10859,14 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
 
         // Validate categories if provided
         if (parent_category_id) {
-            const [categories] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [parent_category_id]);
-            if (categories.length === 0) {
-                return res.status(400).json({ message: 'Invalid parent category' });
-            }
-        }
+    const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
+    if (categories.length === 0) return res.status(400).json({ message: 'Invalid parent category' });
+}
 
-        if (child_category_id && parent_category_id) {
-            const [childCategories] = await db.query('SELECT * FROM blog_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
-            if (childCategories.length === 0) {
-                return res.status(400).json({ message: 'Invalid child category' });
-            }
-        }
+if (child_category_id && parent_category_id) {
+    const [childCategories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
+    if (childCategories.length === 0) return res.status(400).json({ message: 'Invalid child category' });
+}
 
         // Validate topics if provided
         if (topic_id) {
