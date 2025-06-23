@@ -10789,7 +10789,7 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
 
         const post_date = status === 'Live' ? new Date() : null;
 
-        // Insert into database
+        // Insert into database (keeping post_titles and descriptions, comments is optional)
         await db.query(`
             INSERT INTO blogs (
                 blog_name, slug, status, parent_category_id, child_category_id,
@@ -10799,7 +10799,8 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
         `, [
             blog_name, slug, status, parent_category_id || null, child_category_id || null,
             topic_id || null, meta_description || null, post_by || null, read_minutes || null,
-            comments || null, post_date, mainImage, JSON.stringify(additionalImages),
+            comments || null, // comments is optional
+            post_date, mainImage, JSON.stringify(additionalImages),
             JSON.stringify(image_captions), JSON.stringify(parsedPostTitles), JSON.stringify(parsedDescriptions)
         ]);
 
