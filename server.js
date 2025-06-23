@@ -10737,6 +10737,29 @@ app.delete('/api/blog-ratings/:id', async (req, res) => {
 //         res.status(500).json({ message: 'Error creating blog' });
 //     }
 // });
+// Get all parent categories (where parent_id is null)
+app.get('/api/parent-categories', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM product_categories WHERE parent_id IS NULL');
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching parent categories:', err);
+        res.status(500).json({ message: 'Error fetching parent categories', error: err.message });
+    }
+});
+
+// Get child categories by parent_id
+app.get('/api/child-categories/:parent_id', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM product_categories WHERE parent_id = ?', [req.params.parent_id]);
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching child categories:', err);
+        res.status(500).json({ message: 'Error fetching child categories', error: err.message });
+    }
+});
+
+// Updated Blog POST API
 app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
     try {
         const {
@@ -10766,9 +10789,9 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
 
         let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
-        // Validate categories using the product-categories table
+        // Validate categories
         if (parent_category_id) {
-            const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
+            const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id IS NULL', [parent_category_id]);
             if (categories.length === 0) return res.status(400).json({ message: 'Invalid parent category' });
         }
 
@@ -10803,13 +10826,14 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
         res.status(500).json({ message: 'Error creating blog', error: err.message });
     }
 });
-//  Update Blog API (PUT) 
+
+// Updated Blog PUT API
 app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
     try {
         const {
             blog_name, slug, status, parent_category_id, child_category_id,
-            topic_id, blog_html, post_title, meta_description,
-            post_by, read_minutes, comments
+            topic_id, meta_description, post_by, read_minutes, comments,
+            post_titles, descriptions
         } = req.body;
 
         const id = req.params.id;
@@ -10829,7 +10853,7 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             additionalImages = [];
         }
 
-        // Handle file uploads safely
+        // Handle file uploads
         if (req.files && req.files.length > 0) {
             // Delete old main image if new one is uploaded
             if (req.files[0]) {
@@ -10851,9 +10875,9 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             }
         }
 
-        // Validate categories if provided
+        // Validate categories
         if (parent_category_id) {
-            const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
+            const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id IS NULL', [parent_category_id]);
             if (categories.length === 0) {
                 return res.status(400).json({ message: 'Invalid parent category' });
             }
@@ -10866,7 +10890,6 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             }
         }
 
-        // Validate topics if provided
         if (topic_id) {
             const [topics] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [topic_id]);
             if (topics.length === 0) {
@@ -10878,12 +10901,25 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             ? new Date()
             : existing[0].post_date;
 
+        let image_captions = [];
+        let parsedPostTitles = [];
+        let parsedDescriptions = [];
+
+        try {
+            image_captions = req.body.image_captions ? JSON.parse(req.body.image_captions) : [];
+            parsedPostTitles = req.body.post_titles ? JSON.parse(req.body.post_titles) : [];
+            parsedDescriptions = req.body.descriptions ? JSON.parse(req.body.descriptions) : [];
+        } catch (e) {
+            return res.status(400).json({ message: 'Invalid JSON format in request body' });
+        }
+
         await db.query(`
             UPDATE blogs SET
                 blog_name = ?, slug = ?, status = ?, parent_category_id = ?,
-                child_category_id = ?, topic_id = ?, blog_html = ?,
-                post_title = ?, meta_description = ?, post_by = ?,
-                read_minutes = ?, comments = ?, post_date = ?, image = ?, images = ?
+                child_category_id = ?, topic_id = ?, meta_description = ?,
+                post_by = ?, read_minutes = ?, comments = ?,
+                post_date = ?, image = ?, images = ?,
+                image_captions = ?, post_titles = ?, descriptions = ?
             WHERE id = ?
         `, [
             blog_name || existing[0].blog_name,
@@ -10892,8 +10928,6 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             parent_category_id || existing[0].parent_category_id,
             child_category_id || existing[0].child_category_id,
             topic_id || existing[0].topic_id,
-            blog_html || existing[0].blog_html,
-            post_title || existing[0].post_title,
             meta_description || existing[0].meta_description,
             post_by || existing[0].post_by,
             read_minutes || existing[0].read_minutes,
@@ -10901,6 +10935,9 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
             post_date,
             image,
             JSON.stringify(additionalImages),
+            JSON.stringify(image_captions),
+            JSON.stringify(parsedPostTitles),
+            JSON.stringify(parsedDescriptions),
             id
         ]);
 
