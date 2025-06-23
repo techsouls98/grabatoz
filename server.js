@@ -10745,12 +10745,10 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
             post_titles, descriptions
         } = req.body;
 
-        // Validate required fields
         if (!blog_name) {
             return res.status(400).json({ message: 'Blog name is required' });
         }
 
-        // Safe JSON parsing
         let image_captions = [];
         let parsedPostTitles = [];
         let parsedDescriptions = [];
@@ -10763,25 +10761,22 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
             return res.status(400).json({ message: 'Invalid JSON format in request body' });
         }
 
-        // Safe file handling
         const mainImage = req.files && req.files[0] ? `Uploads/${req.files[0].filename}` : null;
         const additionalImages = req.files ? req.files.slice(mainImage ? 1 : 0).map(file => `Uploads/${file.filename}`) : [];
 
-        // Generate slug
         let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
-        // Validate categories (use correct table name)
+        // Validate categories using the product-categories table
         if (parent_category_id) {
-            const [categories] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [parent_category_id]);
+            const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
             if (categories.length === 0) return res.status(400).json({ message: 'Invalid parent category' });
         }
 
         if (child_category_id) {
-            const [childCategories] = await db.query('SELECT * FROM blog_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
+            const [childCategories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
             if (childCategories.length === 0) return res.status(400).json({ message: 'Invalid child category' });
         }
 
-        // Validate topics
         if (topic_id) {
             const [topics] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [topic_id]);
             if (topics.length === 0) return res.status(400).json({ message: 'Invalid topic' });
@@ -10789,7 +10784,6 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
 
         const post_date = status === 'Live' ? new Date() : null;
 
-        // Insert into database (keeping post_titles and descriptions, comments is optional)
         await db.query(`
             INSERT INTO blogs (
                 blog_name, slug, status, parent_category_id, child_category_id,
@@ -10799,8 +10793,7 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
         `, [
             blog_name, slug, status, parent_category_id || null, child_category_id || null,
             topic_id || null, meta_description || null, post_by || null, read_minutes || null,
-            comments || null, // comments is optional
-            post_date, mainImage, JSON.stringify(additionalImages),
+            comments || null, post_date, mainImage, JSON.stringify(additionalImages),
             JSON.stringify(image_captions), JSON.stringify(parsedPostTitles), JSON.stringify(parsedDescriptions)
         ]);
 
@@ -10860,14 +10853,14 @@ app.put('/api/blogs/:id', upload.array('images', 20), async (req, res) => {
 
         // Validate categories if provided
         if (parent_category_id) {
-            const [categories] = await db.query('SELECT * FROM blog_categories WHERE id = ?', [parent_category_id]);
+            const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
             if (categories.length === 0) {
                 return res.status(400).json({ message: 'Invalid parent category' });
             }
         }
 
         if (child_category_id && parent_category_id) {
-            const [childCategories] = await db.query('SELECT * FROM blog_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
+            const [childCategories] = await db.query('SELECT * FROM product_categories WHERE id = ? AND parent_id = ?', [child_category_id, parent_category_id]);
             if (childCategories.length === 0) {
                 return res.status(400).json({ message: 'Invalid child category' });
             }
@@ -10927,8 +10920,8 @@ app.get('/api/blogs', async (req, res) => {
                    t.topic_name,
                    u.role AS post_by_user_role
             FROM blogs b
-            LEFT JOIN blog_categories pc ON b.parent_category_id = pc.id
-            LEFT JOIN blog_categories cc ON b.child_category_id = cc.id
+            LEFT JOIN product_categories pc ON b.parent_category_id = pc.id
+            LEFT JOIN product_categories cc ON b.child_category_id = cc.id
             LEFT JOIN blog_topics t ON b.topic_id = t.id
             LEFT JOIN users u ON b.post_by = u.id
             ORDER BY b.id DESC
@@ -10973,7 +10966,7 @@ app.get('/api/blogs/:id', async (req, res) => {
         let postByUserRole = null;
 
         if (blog.parent_category_id) {
-            const [category] = await db.query('SELECT category_name FROM blog_categories WHERE id = ?', [blog.parent_category_id]);
+            const [category] = await db.query('SELECT category_name FROM product_categories WHERE id = ?', [blog.parent_category_id]);
             parentCategoryName = category[0]?.category_name || null;
         }
 
@@ -10987,7 +10980,6 @@ app.get('/api/blogs/:id', async (req, res) => {
             postByUserRole = user[0]?.role || null;
         }
 
-        // Parse JSON fields safely
         const processedBlog = {
             ...blog,
             parent_category_name: parentCategoryName,
@@ -11029,7 +11021,7 @@ app.get('/api/blogs/slug/:slug', async (req, res) => {
         let postByUserRole = null;
 
         if (blog.parent_category_id) {
-            const [category] = await db.query('SELECT category_name FROM blog_categories WHERE id = ?', [blog.parent_category_id]);
+            const [category] = await db.query('SELECT category_name FROM product_categories WHERE id = ?', [blog.parent_category_id]);
             parentCategoryName = category[0]?.category_name || null;
         }
 
@@ -11043,7 +11035,6 @@ app.get('/api/blogs/slug/:slug', async (req, res) => {
             postByUserRole = user[0]?.role || null;
         }
 
-        // Parse JSON fields safely
         const processedBlog = {
             ...blog,
             parent_category_name: parentCategoryName,
@@ -11113,6 +11104,7 @@ app.delete('/api/blogs/:id', async (req, res) => {
         res.status(500).json({ message: 'Error deleting blog', error: err.message });
     }
 });
+
 
 
 
