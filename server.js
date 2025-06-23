@@ -10752,33 +10752,32 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
             blog_name, slug, status,
             parent_category_id, child_category_id,
             topic_id, read_minutes, post_by,
-            post_titles, descriptions, image_captions
+            post_title, blog_html, meta_description
         } = req.body;
 
-        // Parse array fields
-        const titles = post_titles ? JSON.parse(post_titles) : [];
-        const descs = descriptions ? JSON.parse(descriptions) : [];
-        const captions = image_captions ? JSON.parse(image_captions) : [];
+        // Parse JSON strings
+        const titles = post_title ? JSON.parse(post_title) : [];
+        const descriptions = blog_html ? JSON.parse(blog_html) : [];
+        const captions = meta_description ? JSON.parse(meta_description) : [];
 
         // Handle images
         const files = req.files || [];
         const mainImage = files[0] ? `uploads/${files[0].filename}` : null;
         const additionalImages = files.slice(1).map(file => `uploads/${file.filename}`);
 
-        // Insert into database
         await db.query(`
             INSERT INTO blogs (
                 blog_name, slug, status,
                 parent_category_id, child_category_id,
                 topic_id, read_minutes, post_by,
-                post_titles, descriptions, image_captions,
+                post_title, blog_html, meta_description,
                 image, images, post_date
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             blog_name, slug, status,
             parent_category_id || null, child_category_id || null,
             topic_id || null, read_minutes || null, post_by || null,
-            JSON.stringify(titles), JSON.stringify(descs), JSON.stringify(captions),
+            JSON.stringify(titles), JSON.stringify(descriptions), JSON.stringify(captions),
             mainImage, JSON.stringify(additionalImages),
             status === 'Live' ? new Date() : null
         ]);
