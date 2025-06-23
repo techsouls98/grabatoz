@@ -10755,16 +10755,27 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
             post_title, blog_html, meta_description
         } = req.body;
 
-        // Parse JSON strings
-        const titles = post_title ? JSON.parse(post_title) : [];
-        const descriptions = blog_html ? JSON.parse(blog_html) : [];
-        const captions = meta_description ? JSON.parse(meta_description) : [];
+        // Validate required fields
+        if (!blog_name || !slug || !status) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
 
-        // Handle images
+        // Parse JSON strings with proper error handling
+        let titles = [], descriptions = [], captions = [];
+        try {
+            titles = post_title ? JSON.parse(post_title) : [];
+            descriptions = blog_html ? JSON.parse(blog_html) : [];
+            captions = meta_description ? JSON.parse(meta_description) : [];
+        } catch (e) {
+            return res.status(400).json({ error: 'Invalid JSON in content fields' });
+        }
+
+        // Handle file uploads
         const files = req.files || [];
         const mainImage = files[0] ? `uploads/${files[0].filename}` : null;
         const additionalImages = files.slice(1).map(file => `uploads/${file.filename}`);
 
+        // Database operation
         await db.query(`
             INSERT INTO blogs (
                 blog_name, slug, status,
@@ -10784,8 +10795,12 @@ app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
 
         res.json({ success: true, message: 'Blog created successfully' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Server error:', error);
+        // Ensure we always return JSON, even for errors
+        res.status(500).json({ 
+            error: 'Internal server error',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 //  Update Blog API (PUT) 
