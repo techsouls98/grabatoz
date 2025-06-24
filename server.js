@@ -10732,365 +10732,6 @@ app.delete('/api/blog-ratings/:id', async (req, res) => {
         res.status(500).json({ message: 'Error deleting rating' });
     }
 });
-// // Create Blog API (POST)
-// // app.post('/api/blogs', upload.array('images', 20), async (req, res) => {
-// //     const {
-// //         blog_name, status, parent_category_id, child_category_id,
-// //         topic_id, blog_html, post_title, meta_description,
-// //         post_by, read_minutes, comments
-// //     } = req.body;
-
-// //     // Main image stored separately
-// //     const mainImage = req.files[0] ? `Uploads/${req.files[0].filename}` : null;
-
-// //     // Collect all other images into an array
-// //     const additionalImages = req.files.slice(1).map(file => `Uploads/${file.filename}`);
-
-// //     // Slug generation logic (auto-generated from blog name)
-// //     let slug = req.body.slug || blog_name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-
-// //     // Fetch categories and topics
-// //     try {
-// //         const [categories] = await db.query('SELECT * FROM product_categories WHERE id = ?', [parent_category_id]);
-// //         if (categories.length === 0) return res.status(400).json({ message: 'Invalid category' });
-
-// //         const [topics] = await db.query('SELECT * FROM blog_topics WHERE id = ?', [topic_id]);
-// //         if (topics.length === 0) return res.status(400).json({ message: 'Invalid topic' });
-
-// //         const post_date = status === 'Live' ? new Date() : null;
-
-// //         // Insert into the database
-// //         await db.query(`
-// //             INSERT INTO blogs (
-// //                 blog_name, slug, status, parent_category_id, child_category_id,
-// //                 topic_id, blog_html, post_title, meta_description,
-// //                 post_by, read_minutes, comments, post_date, image, images
-// //             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-// //         `, [
-// //             blog_name, slug, status, parent_category_id || null, child_category_id || null,
-// //             topic_id || null, blog_html, post_title, meta_description,
-// //             post_by || null, read_minutes || null, comments || null,
-// //             post_date, mainImage, JSON.stringify(additionalImages) // Store additional images as JSON string
-// //         ]);
-
-// //         res.json({ success: true, message: 'Blog created successfully' });
-// //     } catch (err) {
-// //         console.error(err);
-// //         res.status(500).json({ message: 'Error creating blog' });
-// //     }
-// // });
-// app.post('/api/blogs', upload.array('additional_images', 20), async (req, res) => {
-//     const {
-//         blog_name,
-//         slug,
-//         status,
-//         main_category,
-//         sub_category,
-//         topic_id,
-//         read_minutes,
-//         posted_by,
-//         blog_title,
-//         description,
-//     } = req.body;
-
-//     // Files handling
-//     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
-//     const additional_images = req.files.slice(1).map(file => `Uploads/${file.filename}`);
-
-//     if (!blog_name || !slug || !status || !main_category || !sub_category || !topic_id || !posted_by || !blog_title) {
-//         return res.status(400).json({ message: 'All fields are required' });
-//     }
-
-//     try {
-//         // Insert blog details into MySQL
-//         const result = await db.query(
-//             'INSERT INTO blogs (blog_name, slug, status, main_category, sub_category, topic_id, main_image, read_minutes, posted_by, blog_title, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-//             [
-//                 blog_name,
-//                 slug,
-//                 status,
-//                 main_category,
-//                 sub_category,
-//                 topic_id,
-//                 main_image,
-//                 read_minutes,
-//                 posted_by,
-//                 JSON.stringify({ blog_title, additional_images, description }), // Store blog title, images, and description in JSON
-//             ]
-//         );
-//         res.json({ success: true, message: 'Blog created successfully' });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error creating blog' });
-//     }
-// });
-// // Update Blog API
-// app.put('/api/blogs/:id', upload.array('additional_images', 20), async (req, res) => {
-//     const { id } = req.params;
-//     const {
-//         blog_name,
-//         slug,
-//         status,
-//         main_category,
-//         sub_category,
-//         topic_id,
-//         read_minutes,
-//         posted_by,
-//         blog_title,
-//         description,
-//     } = req.body;
-
-//     // Files handling
-//     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
-//     const additional_images = req.files.slice(1).map(file => `Uploads/${file.filename}`);
-
-//     try {
-//         const result = await db.query(
-//             'UPDATE blogs SET blog_name = ?, slug = ?, status = ?, main_category = ?, sub_category = ?, topic_id = ?, main_image = ?, read_minutes = ?, posted_by = ?, blog_title = ?, description = ? WHERE id = ?',
-//             [
-//                 blog_name,
-//                 slug,
-//                 status,
-//                 main_category,
-//                 sub_category,
-//                 topic_id,
-//                 main_image,
-//                 read_minutes,
-//                 posted_by,
-//                 JSON.stringify({ blog_title, additional_images, description }),
-//                 id,
-//             ]
-//         );
-//         res.json({ success: true, message: 'Blog updated successfully' });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error updating blog' });
-//     }
-// });
-
-// // Get All Blogs API
-// app.get('/api/blogs', async (req, res) => {
-//     try {
-//         const [rows] = await db.query('SELECT * FROM blogs');
-//         res.json(rows);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error fetching blogs' });
-//     }
-// });
-// // Get Blog by ID API
-// app.get('/api/blogs/:id', async (req, res) => {
-//     const { id } = req.params;
-
-//     try {
-//         const [rows] = await db.query('SELECT * FROM blogs WHERE id = ?', [id]);
-//         if (rows.length === 0) {
-//             return res.status(404).json({ message: 'Blog not found' });
-//         }
-//         res.json(rows[0]);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error fetching blog' });
-//     }
-// });
-// // Get Blog by Slug API
-// app.get('/api/blogs/slug/:slug', async (req, res) => {
-//     const { slug } = req.params;
-
-//     try {
-//         const [rows] = await db.query('SELECT * FROM blogs WHERE slug = ?', [slug]);
-//         if (rows.length === 0) {
-//             return res.status(404).json({ message: 'Blog not found' });
-//         }
-//         res.json(rows[0]);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error fetching blog' });
-//     }
-// });
-// // Delete Blog (DELETE) 
-// // Delete Blog API
-// app.delete('/api/blogs/:id', async (req, res) => {
-//     const { id } = req.params;
-
-//     try {
-//         await db.query('DELETE FROM blogs WHERE id = ?', [id]);
-//         res.json({ success: true, message: 'Blog deleted successfully' });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error deleting blog' });
-//     }
-// });
-
-
-
-
-// Allow large JSON bodies
-
-// Create Blog API
-// app.post('/api/blog', upload.array('additional_images', 20), async (req, res) => {
-//     const {
-//         blog_name,
-//         slug,
-//         status,
-//         main_category_id,
-//         sub_category_id,
-//         topic_id,
-//         read_minutes,
-//         posted_by,
-//         blog_title,
-//         description,
-//     } = req.body;
-
-//     // Files handling
-//     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
-//     const additional_images = req.files.slice(1).map(file => `Uploads/${file.filename}`);
-
-//     if (!blog_name || !slug || !status || !main_category_id || !posted_by || !blog_title) {
-//         return res.status(400).json({ message: 'Required fields are missing' });
-//     }
-
-//     try {
-//         // Insert blog details into MySQL
-//         const result = await db.query(
-//             'INSERT INTO blog (blog_name, slug, status, main_category_id, sub_category_id, topic_id, main_image, read_minutes, posted_by, blog_title, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-//             [
-//                 blog_name,
-//                 slug,
-//                 status,
-//                 main_category_id,
-//                 sub_category_id || null,
-//                 topic_id || null,
-//                 main_image,
-//                 read_minutes || null,
-//                 posted_by,
-//                 blog_title,
-//                 description || null
-//             ]
-//         );
-        
-//         // Insert additional images if any
-//         if (additional_images.length > 0) {
-//             await Promise.all(additional_images.map(async (image) => {
-//                 await db.query(
-//                     'INSERT INTO blog_images (blog_id, image_path) VALUES (?, ?)',
-//                     [result.insertId, image]
-//                 );
-//             }));
-//         }
-        
-//         res.json({ success: true, message: 'Blog created successfully', id: result.insertId });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error creating blog' });
-//     }
-// });
-// // Get All Blogs API
-// app.get('/api/blog', async (req, res) => {
-//     try {
-//         const [rows] = await db.query(`
-//             SELECT b.*, 
-//                    mc.category_name as main_category_name,
-//                    sc.category_name as sub_category_name,
-//                    t.topic_name
-//             FROM blog b
-//             LEFT JOIN product_categories mc ON b.main_category_id = mc.id
-//             LEFT JOIN product_categories sc ON b.sub_category_id = sc.id
-//             LEFT JOIN blog_topics t ON b.topic_id = t.id
-//             ORDER BY b.created_at DESC
-//         `);
-//         res.json(rows);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error fetching blogs' });
-//     }
-// });
-// // Get Blog by ID API
-// app.get('/api/blog/:id', async (req, res) => {
-//     const { id } = req.params;
-
-//     try {
-//         const [rows] = await db.query('SELECT * FROM blog WHERE id = ?', [id]);
-//         if (rows.length === 0) {
-//             return res.status(404).json({ message: 'Blog not found' });
-//         }
-//         res.json(rows[0]);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error fetching blog' });
-//     }
-// });
-// // Get Blog by Slug API
-// app.get('/api/blog/slug/:slug', async (req, res) => {
-//     const { slug } = req.params;
-
-//     try {
-//         const [rows] = await db.query('SELECT * FROM blog WHERE slug = ?', [slug]);
-//         if (rows.length === 0) {
-//             return res.status(404).json({ message: 'Blog not found' });
-//         }
-//         res.json(rows[0]);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error fetching blog' });
-//     }
-// });
-// // Update Blog API
-// app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res) => {
-//     const { id } = req.params;
-//     const {
-//         blog_name,
-//         slug,
-//         status,
-//         main_category_id,
-//         sub_category_id,
-//         topic_id,
-//         read_minutes,
-//         posted_by,
-//         blog_title,
-//         description,
-//     } = req.body;
-
-//     // Files handling
-//     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
-//     const additional_images = req.files.slice(1).map(file => `Uploads/${file.filename}`);
-
-//     try {
-//         const result = await db.query(
-//             'UPDATE blog SET blog_name = ?, slug = ?, status = ?, main_category_id = ?, sub_category_id = ?, topic_id = ?, main_image = ?, read_minutes = ?, posted_by = ?, blog_title = ?, description = ? WHERE id = ?',
-//             [
-//                 blog_name,
-//                 slug,
-//                 status,
-//                 main_category_id,
-//                 sub_category_id,
-//                 topic_id,
-//                 main_image,
-//                 read_minutes,
-//                 posted_by,
-//                 JSON.stringify({ blog_title, additional_images, description }),
-//                 id,
-//             ]
-//         );
-//         res.json({ success: true, message: 'Blog updated successfully' });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error updating blog' });
-//     }
-// });
-// // Delete Blog API
-// app.delete('/api/blog/:id', async (req, res) => {
-//     const { id } = req.params;
-
-//     try {
-//         await db.query('DELETE FROM blog WHERE id = ?', [id]);
-//         res.json({ success: true, message: 'Blog deleted successfully' });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error deleting blog' });
-//     }
-// });
-// GET all blogs
 app.get('/api/blog', async (req, res) => {
     try {
         const [rows] = await db.query(`
@@ -11120,7 +10761,6 @@ app.get('/api/blog', async (req, res) => {
         res.status(500).json({ message: 'Error fetching blogs', error: err.message });
     }
 });
-
 // GET blog by ID
 app.get('/api/blog/:id', async (req, res) => {
     const { id } = req.params;
@@ -11153,13 +10793,62 @@ app.get('/api/blog/:id', async (req, res) => {
     }
 });
 // GET blog by slug
+// app.get('/api/blog/slug/:slug', async (req, res) => {
+//     const { slug } = req.params;
+//     try {
+//         const [rows] = await db.query(`
+//             SELECT b.*, 
+//                    mc.name AS main_category_name,  -- Updated column name
+//                    sc.name AS sub_category_name,   -- Updated column name
+//                    t.topic_name
+//             FROM blog b
+//             LEFT JOIN product_categories mc ON b.main_category_id = mc.id
+//             LEFT JOIN product_categories sc ON b.sub_category_id = sc.id
+//             LEFT JOIN blog_topics t ON b.topic_id = t.id
+//             WHERE b.slug = ?
+//         `, [slug]);
+
+//         if (rows.length === 0) {
+//             return res.status(404).json({ message: 'Blog not found' });
+//         }
+
+//         // Destructure the row
+//         const blogRow = rows[0];
+
+//         // Parse fields that are stored as JSON
+//         const blog = {
+//             id: blogRow.id,
+//             blog_name: blogRow.blog_name,
+//             slug: blogRow.slug,
+//             status: blogRow.status,
+//             main_category_name: blogRow.main_category_name,
+//             sub_category_name: blogRow.sub_category_name,
+//             topic_name: blogRow.topic_name,
+//             main_category_id: blogRow.main_category_id,
+//             sub_category_id: blogRow.sub_category_id,
+//             topic_id: blogRow.topic_id,
+//             read_minutes: blogRow.read_minutes,
+//             posted_by: blogRow.posted_by,
+//             created_at: blogRow.created_at,
+//             blog_title: blogRow.blog_title ? JSON.parse(blogRow.blog_title) : [], // Safely parse JSON
+//             additional_images: blogRow.additional_images ? JSON.parse(blogRow.additional_images) : [], // Safely parse JSON
+//             descriptions: blogRow.descriptions ? JSON.parse(blogRow.descriptions) : [], // Safely parse JSON
+//             image_captions: blogRow.image_captions ? JSON.parse(blogRow.image_captions) : [] // Safely parse JSON
+//         };
+
+//         res.json(blog);
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error fetching blog' });
+//     }
+// });
 app.get('/api/blog/slug/:slug', async (req, res) => {
     const { slug } = req.params;
     try {
         const [rows] = await db.query(`
             SELECT b.*, 
-                   mc.name AS main_category_name,  -- Updated column name
-                   sc.name AS sub_category_name,   -- Updated column name
+                   mc.name AS main_category_name,
+                   sc.name AS sub_category_name,   
                    t.topic_name
             FROM blog b
             LEFT JOIN product_categories mc ON b.main_category_id = mc.id
@@ -11190,10 +10879,12 @@ app.get('/api/blog/slug/:slug', async (req, res) => {
             read_minutes: blogRow.read_minutes,
             posted_by: blogRow.posted_by,
             created_at: blogRow.created_at,
-            blog_title: blogRow.blog_title ? JSON.parse(blogRow.blog_title) : [], // Safely parse JSON
-            additional_images: blogRow.additional_images ? JSON.parse(blogRow.additional_images) : [], // Safely parse JSON
-            descriptions: blogRow.descriptions ? JSON.parse(blogRow.descriptions) : [], // Safely parse JSON
-            image_captions: blogRow.image_captions ? JSON.parse(blogRow.image_captions) : [] // Safely parse JSON
+            updated_at: blogRow.updated_at,
+            main_image: blogRow.main_image, // Add this to include the main_image
+            blog_title: blogRow.blog_title ? JSON.parse(blogRow.blog_title) : [],
+            additional_images: blogRow.additional_images ? JSON.parse(blogRow.additional_images) : [],
+            descriptions: blogRow.descriptions ? JSON.parse(blogRow.descriptions) : [],
+            image_captions: blogRow.image_captions ? JSON.parse(blogRow.image_captions) : []
         };
 
         res.json(blog);
@@ -11204,61 +10895,6 @@ app.get('/api/blog/slug/:slug', async (req, res) => {
 });
 
 // POST create blog
-// app.post('/api/blog', upload.array('additional_images', 20), async (req, res) => {
-//     const {
-//         blog_name,
-//         slug,
-//         status,
-//         main_category_id,
-//         sub_category_id,
-//         topic_id,
-//         read_minutes,
-//         posted_by,
-//         blog_title,
-//         descriptions,
-//         image_captions
-//     } = req.body;
-
-//     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
-//     const additional_images = req.files && req.files.length > 1 ? req.files.slice(1).map(file => `Uploads/${file.filename}`) : [];
-
-//     try {
-//         if (!blog_name || !slug || !status || !main_category_id || !main_image) {
-//             return res.status(400).json({ message: 'Missing required fields' });
-//         }
-
-//         const blogContent = {
-//             blog_title: JSON.parse(blog_title || '[]'),
-//             additional_images,
-//             descriptions: JSON.parse(descriptions || '[]'),
-//             image_captions: JSON.parse(image_captions || '[]')
-//         };
-
-//         const [result] = await db.query(
-//             `INSERT INTO blog (
-//                 blog_name, slug, status, main_category_id, sub_category_id, 
-//                 topic_id, main_image, read_minutes, posted_by, blog_title, created_at
-//             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-//             [
-//                 blog_name,
-//                 slug,
-//                 status,
-//                 main_category_id || null,
-//                 sub_category_id || null,
-//                 topic_id || null,
-//                 main_image,
-//                 read_minutes || null,
-//                 posted_by || null,
-//                 JSON.stringify(blogContent),
-//             ]
-//         );
-
-//         res.json({ success: true, message: 'Blog created successfully', id: result.insertId });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: 'Error creating blog' });
-//     }
-// });
 app.post('/api/blog', upload.array('additional_images', 20), async (req, res) => {
     const {
         blog_name,
@@ -11319,7 +10955,6 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
         res.status(500).json({ message: 'Error creating blog' });
     }
 });
-
 // PUT update blog
 app.put('/api/blog/:id', upload.fields([
   { name: 'main_image', maxCount: 1 },
@@ -11431,7 +11066,6 @@ app.put('/api/blog/:id', upload.fields([
         });
     }
 });
-
 // DELETE blog
 app.delete('/api/blog/:id', async (req, res) => {
     const { id } = req.params;
