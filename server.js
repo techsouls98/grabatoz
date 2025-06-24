@@ -10946,8 +10946,8 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
     const additional_images = req.files.slice(1).map(file => `Uploads/${file.filename}`);
 
-    if (!blog_name || !slug || !status || !main_category_id || !sub_category_id || !topic_id || !posted_by || !blog_title) {
-        return res.status(400).json({ message: 'All fields are required' });
+    if (!blog_name || !slug || !status || !main_category_id || !posted_by || !blog_title) {
+        return res.status(400).json({ message: 'Required fields are missing' });
     }
 
     try {
@@ -10959,15 +10959,27 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
                 slug,
                 status,
                 main_category_id,
-                sub_category_id,
-                topic_id,
+                sub_category_id || null,
+                topic_id || null,
                 main_image,
-                read_minutes,
+                read_minutes || null,
                 posted_by,
-                JSON.stringify({ blog_title, additional_images, description }), // Store blog title, images, and description in JSON
+                blog_title,
+                description || null
             ]
         );
-        res.json({ success: true, message: 'Blog created successfully' });
+        
+        // Insert additional images if any
+        if (additional_images.length > 0) {
+            await Promise.all(additional_images.map(async (image) => {
+                await db.query(
+                    'INSERT INTO blog_images (blog_id, image_path) VALUES (?, ?)',
+                    [result.insertId, image]
+                );
+            }));
+        }
+        
+        res.json({ success: true, message: 'Blog created successfully', id: result.insertId });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error creating blog' });
@@ -10976,7 +10988,17 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
 // Get All Blogs API
 app.get('/api/blog', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM blog');
+        const [rows] = await db.query(`
+            SELECT b.*, 
+                   mc.category_name as main_category_name,
+                   sc.category_name as sub_category_name,
+                   t.topic_name
+            FROM blog b
+            LEFT JOIN product_categories mc ON b.main_category_id = mc.id
+            LEFT JOIN product_categories sc ON b.sub_category_id = sc.id
+            LEFT JOIN blog_topics t ON b.topic_id = t.id
+            ORDER BY b.created_at DESC
+        `);
         res.json(rows);
     } catch (err) {
         console.error(err);
