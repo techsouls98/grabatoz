@@ -11317,10 +11317,17 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
         image_captions
     } = req.body;
 
+    // Handle the main image and additional images
     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
     const additional_images = req.files && req.files.length > 1 ? req.files.slice(1).map(file => `Uploads/${file.filename}`) : [];
 
     try {
+        // Validate required fields
+        if (!blog_name || !slug || !status || !main_category_id || !main_image) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        // Prepare the blog content
         const blogContent = {
             blog_title: JSON.parse(blog_title || '[]'),
             additional_images,
@@ -11328,6 +11335,7 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
             image_captions: JSON.parse(image_captions || '[]')
         };
 
+        // Update the blog in the database
         const [result] = await db.query(
             `UPDATE blog SET 
                 blog_name = ?, 
@@ -11336,10 +11344,11 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
                 main_category_id = ?, 
                 sub_category_id = ?, 
                 topic_id = ?, 
-                main_image = IFNULL(?, main_image), 
+                main_image = ?, 
                 read_minutes = ?, 
                 posted_by = ?, 
-                blog_title = ?
+                blog_title = ?, 
+                updated_at = NOW()
             WHERE id = ?`,
             [
                 blog_name,
@@ -11352,7 +11361,7 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
                 read_minutes || null,
                 posted_by || null,
                 JSON.stringify(blogContent),
-                id,
+                id
             ]
         );
 
@@ -11360,6 +11369,7 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
             return res.status(404).json({ message: 'Blog not found' });
         }
 
+        // Return success response
         res.json({ success: true, message: 'Blog updated successfully' });
     } catch (err) {
         console.error(err);
