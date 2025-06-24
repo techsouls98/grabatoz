@@ -11158,8 +11158,8 @@ app.get('/api/blog/slug/:slug', async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT b.*, 
-                   mc.category_name AS main_category_name,
-                   sc.category_name AS sub_category_name,
+                   mc.name AS main_category_name,  -- Updated column name
+                   sc.name AS sub_category_name,   -- Updated column name
                    t.topic_name
             FROM blog b
             LEFT JOIN product_categories mc ON b.main_category_id = mc.id
@@ -11167,22 +11167,42 @@ app.get('/api/blog/slug/:slug', async (req, res) => {
             LEFT JOIN blog_topics t ON b.topic_id = t.id
             WHERE b.slug = ?
         `, [slug]);
+
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Blog not found' });
         }
+
+        // Destructure the row
+        const blogRow = rows[0];
+
+        // Parse fields that are stored as JSON
         const blog = {
-            ...rows[0],
-            blog_title: JSON.parse(rows[0].blog_title || '[]'), // Updated to handle array
-            additional_images: JSON.parse(rows[0].additional_images || '[]'), // Assuming you want to include this
-            descriptions: JSON.parse(rows[0].descriptions || '[]'), // Assuming you want to include this
-            image_captions: JSON.parse(rows[0].image_captions || '[]') // Assuming you want to include this
+            id: blogRow.id,
+            blog_name: blogRow.blog_name,
+            slug: blogRow.slug,
+            status: blogRow.status,
+            main_category_name: blogRow.main_category_name,
+            sub_category_name: blogRow.sub_category_name,
+            topic_name: blogRow.topic_name,
+            main_category_id: blogRow.main_category_id,
+            sub_category_id: blogRow.sub_category_id,
+            topic_id: blogRow.topic_id,
+            read_minutes: blogRow.read_minutes,
+            posted_by: blogRow.posted_by,
+            created_at: blogRow.created_at,
+            blog_title: blogRow.blog_title ? JSON.parse(blogRow.blog_title) : [], // Safely parse JSON
+            additional_images: blogRow.additional_images ? JSON.parse(blogRow.additional_images) : [], // Safely parse JSON
+            descriptions: blogRow.descriptions ? JSON.parse(blogRow.descriptions) : [], // Safely parse JSON
+            image_captions: blogRow.image_captions ? JSON.parse(blogRow.image_captions) : [] // Safely parse JSON
         };
+
         res.json(blog);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error fetching blog' });
     }
 });
+
 // POST create blog
 // app.post('/api/blog', upload.array('additional_images', 20), async (req, res) => {
 //     const {
