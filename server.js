@@ -11121,7 +11121,6 @@ app.get('/api/blog', async (req, res) => {
     }
 });
 
-
 // GET blog by ID
 app.get('/api/blog/:id', async (req, res) => {
     const { id } = req.params;
@@ -11142,7 +11141,10 @@ app.get('/api/blog/:id', async (req, res) => {
         }
         const blog = {
             ...rows[0],
-            blog_title: JSON.parse(rows[0].blog_title || '{}')
+            blog_title: JSON.parse(rows[0].blog_title || '[]'), // Updated to handle array
+            additional_images: JSON.parse(rows[0].additional_images || '[]'), // Assuming you want to include this
+            descriptions: JSON.parse(rows[0].descriptions || '[]'), // Assuming you want to include this
+            image_captions: JSON.parse(rows[0].image_captions || '[]') // Assuming you want to include this
         };
         res.json(blog);
     } catch (err) {
@@ -11150,7 +11152,6 @@ app.get('/api/blog/:id', async (req, res) => {
         res.status(500).json({ message: 'Error fetching blog' });
     }
 });
-
 // GET blog by slug
 app.get('/api/blog/slug/:slug', async (req, res) => {
     const { slug } = req.params;
@@ -11171,7 +11172,10 @@ app.get('/api/blog/slug/:slug', async (req, res) => {
         }
         const blog = {
             ...rows[0],
-            blog_title: JSON.parse(rows[0].blog_title || '{}')
+            blog_title: JSON.parse(rows[0].blog_title || '[]'), // Updated to handle array
+            additional_images: JSON.parse(rows[0].additional_images || '[]'), // Assuming you want to include this
+            descriptions: JSON.parse(rows[0].descriptions || '[]'), // Assuming you want to include this
+            image_captions: JSON.parse(rows[0].image_captions || '[]') // Assuming you want to include this
         };
         res.json(blog);
     } catch (err) {
@@ -11179,7 +11183,6 @@ app.get('/api/blog/slug/:slug', async (req, res) => {
         res.status(500).json({ message: 'Error fetching blog' });
     }
 });
-
 // POST create blog
 app.post('/api/blog', upload.array('additional_images', 20), async (req, res) => {
     const {
@@ -11236,7 +11239,6 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
         res.status(500).json({ message: 'Error creating blog' });
     }
 });
-
 // PUT update blog
 app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res) => {
     const { id } = req.params;
@@ -11303,7 +11305,6 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
         res.status(500).json({ message: 'Error updating blog' });
     }
 });
-
 // DELETE blog
 app.delete('/api/blog/:id', async (req, res) => {
     const { id } = req.params;
@@ -11318,6 +11319,7 @@ app.delete('/api/blog/:id', async (req, res) => {
         res.status(500).json({ message: 'Error deleting blog' });
     }
 });
+
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
