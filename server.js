@@ -11095,8 +11095,8 @@ app.get('/api/blog', async (req, res) => {
     try {
         const [rows] = await db.query(`
             SELECT b.*, 
-                   mc.category_name AS main_category_name,
-                   sc.category_name AS sub_category_name,
+                   mc.name AS main_category_name,  -- Update this to the correct column name
+                   sc.name AS sub_category_name,    -- Update this to the correct column name
                    t.topic_name
             FROM blog b
             LEFT JOIN product_categories mc ON b.main_category_id = mc.id
@@ -11104,16 +11104,23 @@ app.get('/api/blog', async (req, res) => {
             LEFT JOIN blog_topics t ON b.topic_id = t.id
             ORDER BY b.created_at DESC
         `);
+
+        // Parse blog titles and other JSON fields
         const parsedRows = rows.map(row => ({
             ...row,
-            blog_title: JSON.parse(row.blog_title || '{}')
+            blog_title: JSON.parse(row.blog_title || '[]'),
+            additional_images: JSON.parse(row.additional_images || '[]'), // Assuming you want to parse this too
+            descriptions: JSON.parse(row.descriptions || '[]'), // Assuming you want to parse this too
+            image_captions: JSON.parse(row.image_captions || '[]') // Assuming you want to parse this too
         }));
+
         res.json(parsedRows);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Error fetching blogs' });
+        res.status(500).json({ message: 'Error fetching blogs', error: err.message });
     }
 });
+
 
 // GET blog by ID
 app.get('/api/blog/:id', async (req, res) => {
