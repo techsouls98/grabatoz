@@ -11321,7 +11321,10 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
 });
 
 // PUT update blog
-app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res) => {
+app.put('/api/blog/:id', upload.fields([
+  { name: 'main_image', maxCount: 1 },
+  { name: 'additional_images', maxCount: 20 }
+]), async (req, res) => {
     const { id } = req.params;
     const {
         blog_name,
@@ -11334,41 +11337,74 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
         posted_by,
         blog_title,
         descriptions,
-        image_captions
+        image_captions,
+        existing_main_image,
+        existing_additional_images
     } = req.body;
 
-    // Handle the main image and additional images
-    const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
-    const additional_images = req.files && req.files.length > 1 ? req.files.slice(1).map(file => `Uploads/${file.filename}`) : [];
-
     try {
+        // Helper function to safely parse JSON fields
+        const safeParse = (data) => {
+            if (!data) return [];
+            if (Array.isArray(data)) return data;
+            try {
+                const cleaned = data.replace(/^'+|'+$/g, '').replace(/^"+|"+$/g, '');
+                return JSON.parse(cleaned);
+            } catch (e) {
+                console.error('Failed to parse:', data);
+                return [];
+            }
+        };
+
+        // Check if blog exists
+        const [blog] = await db.query('SELECT * FROM blog WHERE id = ?', [id]);
+        if (!blog.length) {
+            return res.status(404).json({ message: 'Blog not found' });
+        }
+
+        // Handle image updates
+        let main_image = existing_main_image || null;
+        let additional_images = safeParse(existing_additional_images);
+
+        // Process uploaded files
+        if (req.files) {
+            if (req.files['main_image']) {
+                main_image = `Uploads/${req.files['main_image'][0].filename}`;
+            }
+            if (req.files['additional_images']) {
+                additional_images = [
+                    ...additional_images,
+                    ...req.files['additional_images'].map(file => `Uploads/${file.filename}`)
+                ];
+            }
+        }
+
         // Validate required fields
         if (!blog_name || !slug || !status || !main_category_id || !main_image) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        // Prepare the blog content
+        // Prepare the updated blog content
         const blogContent = {
-            blog_title: JSON.parse(blog_title || '[]'),
+            blog_title: safeParse(blog_title),
             additional_images,
-            descriptions: JSON.parse(descriptions || '[]'),
-            image_captions: JSON.parse(image_captions || '[]')
+            descriptions: safeParse(descriptions),
+            image_captions: safeParse(image_captions)
         };
 
-        // Update the blog in the database
-        const [result] = await db.query(
-            `UPDATE blog SET 
-                blog_name = ?, 
-                slug = ?, 
-                status = ?, 
-                main_category_id = ?, 
-                sub_category_id = ?, 
-                topic_id = ?, 
-                main_image = ?, 
-                read_minutes = ?, 
-                posted_by = ?, 
-                blog_title = ?, 
-                updated_at = NOW()
+        // Update query WITHOUT updated_at
+        await db.query(
+            `UPDATE blog SET
+                blog_name = ?,
+                slug = ?,
+                status = ?,
+                main_category_id = ?,
+                sub_category_id = ?,
+                topic_id = ?,
+                main_image = ?,
+                read_minutes = ?,
+                posted_by = ?,
+                blog_title = ?
             WHERE id = ?`,
             [
                 blog_name,
@@ -11385,17 +11421,17 @@ app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res)
             ]
         );
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Blog not found' });
-        }
-
-        // Return success response
-        res.json({ success: true, message: 'Blog updated successfully' });
+        return res.json({ success: true, message: 'Blog updated successfully' });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error updating blog' });
+        console.error('Full error:', err);
+        return res.status(500).json({ 
+            message: 'Error updating blog',
+            error: err.message,
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 });
+
 // DELETE blog
 app.delete('/api/blog/:id', async (req, res) => {
     const { id } = req.params;
