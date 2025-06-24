@@ -11184,6 +11184,61 @@ app.get('/api/blog/slug/:slug', async (req, res) => {
     }
 });
 // POST create blog
+// app.post('/api/blog', upload.array('additional_images', 20), async (req, res) => {
+//     const {
+//         blog_name,
+//         slug,
+//         status,
+//         main_category_id,
+//         sub_category_id,
+//         topic_id,
+//         read_minutes,
+//         posted_by,
+//         blog_title,
+//         descriptions,
+//         image_captions
+//     } = req.body;
+
+//     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
+//     const additional_images = req.files && req.files.length > 1 ? req.files.slice(1).map(file => `Uploads/${file.filename}`) : [];
+
+//     try {
+//         if (!blog_name || !slug || !status || !main_category_id || !main_image) {
+//             return res.status(400).json({ message: 'Missing required fields' });
+//         }
+
+//         const blogContent = {
+//             blog_title: JSON.parse(blog_title || '[]'),
+//             additional_images,
+//             descriptions: JSON.parse(descriptions || '[]'),
+//             image_captions: JSON.parse(image_captions || '[]')
+//         };
+
+//         const [result] = await db.query(
+//             `INSERT INTO blog (
+//                 blog_name, slug, status, main_category_id, sub_category_id, 
+//                 topic_id, main_image, read_minutes, posted_by, blog_title, created_at
+//             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+//             [
+//                 blog_name,
+//                 slug,
+//                 status,
+//                 main_category_id || null,
+//                 sub_category_id || null,
+//                 topic_id || null,
+//                 main_image,
+//                 read_minutes || null,
+//                 posted_by || null,
+//                 JSON.stringify(blogContent),
+//             ]
+//         );
+
+//         res.json({ success: true, message: 'Blog created successfully', id: result.insertId });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: 'Error creating blog' });
+//     }
+// });
 app.post('/api/blog', upload.array('additional_images', 20), async (req, res) => {
     const {
         blog_name,
@@ -11199,14 +11254,17 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
         image_captions
     } = req.body;
 
+    // Handle the main image and additional images
     const main_image = req.files && req.files.length > 0 ? `Uploads/${req.files[0].filename}` : null;
     const additional_images = req.files && req.files.length > 1 ? req.files.slice(1).map(file => `Uploads/${file.filename}`) : [];
 
     try {
+        // Validate required fields
         if (!blog_name || !slug || !status || !main_category_id || !main_image) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
+        // Prepare the blog content
         const blogContent = {
             blog_title: JSON.parse(blog_title || '[]'),
             additional_images,
@@ -11214,6 +11272,7 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
             image_captions: JSON.parse(image_captions || '[]')
         };
 
+        // Insert into the database
         const [result] = await db.query(
             `INSERT INTO blog (
                 blog_name, slug, status, main_category_id, sub_category_id, 
@@ -11233,12 +11292,14 @@ app.post('/api/blog', upload.array('additional_images', 20), async (req, res) =>
             ]
         );
 
+        // Return success response
         res.json({ success: true, message: 'Blog created successfully', id: result.insertId });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error creating blog' });
     }
 });
+
 // PUT update blog
 app.put('/api/blog/:id', upload.array('additional_images', 20), async (req, res) => {
     const { id } = req.params;
