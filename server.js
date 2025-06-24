@@ -11312,39 +11312,6 @@ app.delete('/api/blog/:id', async (req, res) => {
     }
 });
 
-// GET product categories (for parent-child dropdowns)
-app.get('/api/product-categories', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT id, category_name, parent_id FROM product_categories ORDER BY category_name');
-        res.json(rows);
-    } catch (err ){
-        console.error(err);
-        res.status(500).json({ message: 'Error fetching categories' });
-    }
-});
-
-// GET blog topics
-app.get('/api/blog-topics', async (req, res) => {
-    try {
-        const [rows] = await db.query('SELECT id, topic_name FROM blog_topics ORDER BY topic_name');
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error fetching topics' });
-    }
-});
-
-// GET user (mocked for simplicity; replace with actual auth logic)
-app.get('/user', async (req, res) => {
-    try {
-        // Replace with actual user fetching logic based on token
-        res.json({ id: 1, name: 'Admin', email: 'admin@example.com' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error fetching user' });
-    }
-});
-
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
