@@ -126,7 +126,7 @@ app.post('/signup', async (req, res) => {
 // 1. GET Endpoint to fetch user data
 app.get('/user', authenticate, async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT name, email FROM users WHERE id = ?', [req.userId]);
+        const [rows] = await db.query('SELECT id, name, email FROM users WHERE id = ?', [req.userId]);
 
         if (rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
