@@ -10595,7 +10595,7 @@ app.post('/api/blog-ratings/dummy', async (req, res) => {
     const { slug, name, email, rating, review } = req.body;
 
     try {
-        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        const [blogRows] = await db.query('SELECT id FROM blog WHERE slug = ?', [slug]);
         if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
 
         const blogId = blogRows[0].id;
@@ -10619,7 +10619,7 @@ app.post('/api/blog-ratings', async (req, res) => {
 
     try {
         // Check if the blog exists based on the slug
-        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        const [blogRows] = await db.query('SELECT id FROM blog WHERE slug = ?', [slug]);
         if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
 
         const blogId = blogRows[0].id;
@@ -10672,7 +10672,7 @@ app.get('/api/blog-ratings/:slug', async (req, res) => {
 
     try {
         // Get blog post ID based on slug
-        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        const [blogRows] = await db.query('SELECT id FROM blog WHERE slug = ?', [slug]);
         if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
 
         const blogId = blogRows[0].id;
@@ -10695,7 +10695,7 @@ app.put('/api/blog-ratings/:id', async (req, res) => {
     const { slug, name, email, rating, review, approved } = req.body;
 
     try {
-        const [blogRows] = await db.query('SELECT id FROM blogs WHERE slug = ?', [slug]);
+        const [blogRows] = await db.query('SELECT id FROM blog WHERE slug = ?', [slug]);
         if (blogRows.length === 0) return res.status(404).json({ message: 'Blog not found' });
 
         const blogId = blogRows[0].id;
